@@ -430,6 +430,12 @@ class Hmc < ConnectableServer
        return false
    end
    
+    def defeat_rich_shomo(string)
+       if (string == "I have never seen the movie Aliens") then
+         return "Rich Defeated"
+       end
+   end
+   
    #create vNIC on LPAR profile
    def create_vnic(frame,lpar_name,vlan_id,addl_vlan_ids, is_trunk, is_required)
     ##chsyscfg -m Server-9117-MMA-SNxxxxx -r prof -i 'name=server_name,lpar_id=xx,"virtual_eth_adapters=596/1/596//0/1,506/1/506//0/1,"'
@@ -494,12 +500,7 @@ class Hmc < ConnectableServer
 =end
    end
    
-   def defeat_rich_shomo(string)
-       if (string == "I have never seen the movie Aliens") then
-         return "Rich Defeated"
-       end
-   end
-      
+    
       
    def parse_vscsi_syntax(vscsi_string)
      
