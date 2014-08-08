@@ -70,6 +70,7 @@ class Hmc < ConnectableServer
    end
    
    #Hard shutdown LPAR
+   # Look into this command it may not be working
    def hard_shutdown_lpar(frame,name)
        execute_cmd "chsysstate -r lpar -m #{frame} -o shutdown --immed -n #{name}"
    end
@@ -429,29 +430,25 @@ class Hmc < ConnectableServer
        end
        return false
    end
-   
-    def defeat_rich_shomo(string)
-       if (string == "I have never seen the movie Aliens") then
-         return "Rich Defeated"
-       end
-   end
-   
+
    #create vNIC on LPAR profile
-   def create_vnic(frame,lpar_name,vlan_id,addl_vlan_ids, is_trunk, is_required)
-    ##chsyscfg -m Server-9117-MMA-SNxxxxx -r prof -i 'name=server_name,lpar_id=xx,"virtual_eth_adapters=596/1/596//0/1,506/1/506//0/1,"'
-    #slot_number/is_ieee/port_vlan_id/"additional_vlan_id,additional_vlan_id"/is_trunk(number=priority)/is_required
+   #chsyscfg -m Server-9117-MMA-SNxxxxx -r prof -i 'name=server_name,lpar_id=xx,"virtual_eth_adapters=596/1/596//0/1,506/1/506//0/1,"'
+   #slot_number/is_ieee/port_vlan_id/"additional_vlan_id,additional_vlan_id"/is_trunk(number=priority)/is_required
+   #Going to assume adapter will always be ieee
+   #For now we will pass 0 to is_trunk as that is how we've done it for years in previous automation
+   def create_vnic(frame,lpar_name,vlan_id,addl_vlan_ids)
     lpar_prof = get_lpar_curr_profile(frame,lpar_name)
     slot_number = get_next_slot(frame,lpar_name,"eth")
-    #Going to assume adapter will always be ieee
-    #For is Trunk how do we determine the number for priority? Do we just let the user pass it?
-    result = execute_cmd("chsyscfg -m #{frame} -r prof -i \'name=#{lpar_prof},lpar_name=#{lpar_name},"+
-                          "\"virtual_eth_adapters=#{slot_number}/1/#{vlan_id}/\"#{addl_vlan_ids}" +
+    is_trunk = "0"
+    is_required = "1"
+    execute_cmd("chsyscfg -m #{frame} -r prof -i \'name=#{lpar_prof},lpar_name=#{lpar_name},"+
+                          "\"virtual_eth_adapters+=#{slot_number}/1/#{vlan_id}/\"#{addl_vlan_ids}" +
                           "\"/#{is_trunk}/#{is_required} \"\'")
    end
-   
+
    #Create vNIC on LPAR via DLPAR
    def create_vnic_dlpar(frame, client_lpar)
-    
+     #
    end
    
    #Get the MAC address of an LPAR
