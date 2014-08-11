@@ -61,7 +61,7 @@ class Hmc < ConnectableServer
    
    #Rename an LPAR
    def rename_lpar(frame, oldname, newname)
-       execute_cmd "chsysstate -r lpar -m #{frame} -i \'name=#{oldname},new_name=#{newname}\'"
+       execute_cmd "chsyscfg -r lpar -m #{frame} -i \'name=#{oldname},new_name=#{newname}\'"
    end
    
    #Active an LPAR using a profile
