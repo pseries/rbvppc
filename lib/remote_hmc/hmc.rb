@@ -19,7 +19,7 @@ class Hmc < ConnectableServer
        execute_cmd "viosvrcmd -m #{frame} -p #{vio} -c \" #{command} \""
    end
    
-   #Execute VIOS commands via HMC
+   #Execute VIOS commands via HMC grepping for a specific item.
    def  execute_vios_cmd_grep(frame, vio, command, grep_for)
        execute_cmd "viosvrcmd -m #{frame} -p #{vio} -c \" #{command} \" | grep #{grep_for}"
    end
@@ -70,7 +70,6 @@ class Hmc < ConnectableServer
    end
    
    #Hard shutdown LPAR
-   # Look into this command it may not be working
    def hard_shutdown_lpar(frame,name)
        execute_cmd "chsysstate -r lpar -m #{frame} -o shutdown --immed -n #{name}"
    end
@@ -124,6 +123,23 @@ class Hmc < ConnectableServer
    #Set the processing units for an lpar
    def set_lpar_proc_units(frame, lpar, units)
        execute_cmd "chhwres -r proc -m #{frame} -o a -p #{lpar} --procunits #{units} "
+   end
+   
+   #Returns array of output with vSCSI adapter information
+   #about the client LPAR
+   def get_vscsi_adapters(frame, lpar)
+       #Get this LPAR's profile name
+       lpar_prof = get_lpar_curr_profile(frame,lpar)
+       
+       #Get vSCSI adapter info from this LPAR's profile
+       scsi_adapter_output = clean_vadapter_string(execute_cmd("lssyscfg -r prof -m #{frame} --filter 'lpar_names=#{lpar},profile_names=#{lpar_prof}' -F virtual_scsi_adapters").chomp)
+       
+       if scsi_adapter_output.include?(",")
+        scsi_adapters = scsi_adapter_output.split(/,/)
+       else
+        scsi_adapters = [scsi_adapter_output]
+       end
+       return scsi_adapters
    end
    
    #Returns 30 when test in dublin lab on frame: rslppc03 lpar:dwin004
@@ -233,6 +249,74 @@ class Hmc < ConnectableServer
        execute_cmd "lshwres -r io -m #{frame} --rsubtype slot -F lpar_name:description --filter \"lpar_names=#{lpar}\""
    end
    
+   #Remove vSCSI from LPAR
+   #Handles removing from the LPAR profiles as well as DLPAR
+   #Last parameter is optional and if it isn't specified
+   #then it looks for an adapter on lpar that is attached to server_lpar
+   #and removes that from the profile/hardware of both the client
+   #and server
+   def remove_vscsi(frame,lpar,server_lpar,adapter_details=nil)
+    if adapter_details.nil?
+     adapters = get_vscsi_adapters(frame,lpar)
+     adapters.each do |adapter|
+      adapter_details = adapter if adapter.include?(server_lpar)
+     end
+    end
+    
+    #Parse the adapter details into a hash
+    adapter_hash = parse_vscsi_syntax(adapter_details)
+    
+    #Remove this vSCSI from the lpar and server lpar profiles
+    remove_vscsi_from_profile(frame,lpar,server_lpar,adapter_hash)
+    
+    #Remove this vSCSI from the actual hardware of lpar and server lpar
+    remove_vscsi_dlpar(frame,lpar,server_lpar,adapter_hash)
+    
+   end
+   
+   #Remove vSCSI from the LPAR profiles only
+   def remove_vscsi_from_profile(frame,lpar,server_lpar,vscsi_hash)
+      lpar_profile = get_lpar_curr_profile(frame,lpar)
+      remote_lpar_profile = get_lpar_curr_profile(frame,server_lpar)
+      client_lpar_id = get_lpar_id(frame,lpar)
+      
+      #TODO: Add checking of vscsi_hash to make sure it's populated
+      #      the way it's expected to be
+      
+      client_slot = vscsi_hash[:virtual_slot_num]
+      server_lpar_id = vscsi_hash[:remote_lpar_id]
+      if server_lpar != vscsi_hash[:remote_lpar_name]
+       #server_lpar and the LPAR cited in the
+       #vscsi hash aren't the same...
+       #error out or do something else here...?
+      end
+      server_slot = vscsi_hash[:remote_slot_num]
+      is_req = vscsi_hash[:is_required]
+      
+      #Modify client LPAR's profile to no longer include the adapter
+      #whose details occupy the vscsi_hash
+      execute_cmd("chsyscfg -r prof -m #{frame} -i \"name=#{lpar_profile},lpar_name=#{lpar}," +
+                  "virtual_scsi_adapters-=#{client_slot}/client/#{server_lpar_id}/#{server_lpar}/#{server_slot_num}/#{is_req}\" ")
+                  
+      #Modify the server LPAR's profile to no longer include the client
+      execute_cmd("chsyscfg -r prof -m #{frame} -i \"name=#{remote_lpar_profile},lpar_name=#{server_lpar}," +
+                  "virtual_scsi_adapters-=#{server_slot}/server/#{client_lpar_id}/#{lpar}/#{client_slot}/#{is_req}\" ")
+    
+   end
+   
+   #Remove vSCSI from LPARs via DLPAR
+   def remove_vscsi_dlpar(frame,lpar,server_lpar,client_slot,server_slot)
+      
+      #If the client LPAR is running, we have to do DLPAR on it.
+      if check_lpar_state(frame,lpar) == "Running"
+        execute_cmd("chhwres -r virtualio -m #{frame} -p #{lpar} -o r --rsubtype scsi -s #{client_slot_to_use} -a \"adapter_type=client,remote_lpar_name=#{server_lpar},remote_slot_num=#{server_slot_to_use}\" ")
+      end
+      
+      #If the server LPAR is running, we have to do DLPAR on it.
+      if check_lpar_state(frame,server_lpar) == "Running"
+        execute_cmd("chhwres -r virtualio -m #{frame} -p #{server_lpar} -o r --rsubtype scsi -s #{server_slot_to_use} -a \"adapter_type=server,remote_lpar_name=#{lpar},remote_slot_num=#{client_slot_to_use}\" ")
+      end
+   end
    
    #Add vSCSI to LPAR
    #Handles adding to profile and via DLPAR
@@ -299,7 +383,6 @@ class Hmc < ConnectableServer
    end
 
    #List unmapped disks on VIOS
-   #      lspv -free doesn't always seem to return *every* provisionable disk - why?
    #      lspv -free  doesn't include disks that have been mapped before and contain a 'VGID'
    def list_available_disks(frame,vio )
        command = "lspv -avail -fmt : -field name pvid size"
@@ -375,46 +458,88 @@ class Hmc < ConnectableServer
      return mapping_cols[0]
    end
    
+   #Get a list of all disknames attached to a vhost
+   def get_attached_disknames(frame,vio,vhost)
+      cmd = "lsmap -vadapter #{vhost} -field backing -fmt :"
+      diskname_output = execute_vios_cmd(frame,vio,cmd).chomp
+      
+      return diskname_output.split(/:/)
+   end
+   
+   #Removes all disks/vhosts/vSCSIs from a client LPAR and it's VIOs
+   def remove_all_disks_from_lpar(frame,lpar)
+      #Get all vscsi adapters on lpar
+      vscsi_adapters = get_vscsi_adapters(frame,lpar)
+      
+      vscsi_adapters.each do |adapter|
+        #Parse the adapter syntax into a hash
+        adapter_hash = parse_vscsi_syntax(adapter)
+        #Find the adapter slot on the VIO that this occupies
+        server_slot = adapter_hash[:remote_slot_num]
+        #Find the name of the VIO that this attaches to
+        vio_name = adapter_hash[:remote_lpar_name]
+        #Find the vhost that this represents, given the adapter slot
+        vhost = find_vhost_given_virtual_slot(frame,vio_name,server_slot)
+        #Find the list of disknames that are attached to this vhost
+        disknames = get_attached_disknames(frame,vio_name,vhost)
+        disknames.each do |hdisk|
+          #Remove each disk from the vhost it's assigned to
+          remove_disk_from_vhost(frame,vio_name,hdisk)
+        end
+        #Remove the vhost itself
+        remove_vhost(frame,vio_name,vhost)
+        #After all disks and the vhost are removed,
+        #remove the vSCSI adapter from both the VIO and the client LPAR
+        remove_vscsi(frame,lpar,vio_name,adapter)
+      end
+   end
+   
    #Remove a Virtual SCSI Host Adapter
    def remove_vhost(frame, vio, vhost)
        command = "rmdev -dev #{vhost}"
-        execute_vios_cmd(frame, vio, command)
+       execute_vios_cmd(frame, vio, command)
    end
    
    #Recursively remove a Virtual SCSI Host Adapter
    def recursive_remove_vhost(frame, vio, vhost)
        command = "rmdev -dev #{vhost} -recursive"
-        execute_vios_cmd(frame, vio, command)
+       execute_vios_cmd(frame, vio, command)
    end
    
    #Assign Disk/Logical Volume to a vSCSI Host Adapter
    def assign_disk_vhost(frame, vio, disk, vtd, vhost)
        command = "mkvdev -vdev #{disk.name} -dev #{vtd} -vadapter #{vhost}"
-        execute_vios_cmd(frame, vio, command)
+       execute_vios_cmd(frame, vio, command)
    end
    
    #Remove Disk/Logical Volume from vSCSI Host Adapter
-   def remove_disk_vSCSI(frame, vio, vtd)
+   def remove_vtd_from_vhost(frame, vio, vtd)
        command = "rmvdev -vtd #{vtd}"
-        execute_vios_cmd(frame, vio, command)
+       execute_vios_cmd(frame, vio, command)
+   end
+   
+   #Remove physical disk from vhost adapter
+   def remove_disk_from_vhost(frame,vio,diskname)
+      command = "rmvdev -vdev #{diskname}"
+      execute_vios_cmd(frame, vio, command)
    end
    
    #List Shared Ethernet Adapters on VIOS
    def list_shared_eth_adapters(frame,vio)
        command = "lsmap -all -net"
-        execute_vios_cmd(frame, vio, command)
+       execute_vios_cmd(frame, vio, command)
    end
    
    #Get VIOS version
    def get_vio_version(frame, vio)
        command = "ioslevel"
-        execute_vios_cmd(frame, vio, command)
+       execute_vios_cmd(frame, vio, command)
    end
    
    #Reboot VIOS
    def reboot_vio(frame,vio)
        command ="shutdown -restart"
-        execute_vios_cmd(frame,vio,command)
+       execute_vios_cmd(frame,vio,command)
    end
    
    #Netboot an lpar
@@ -430,25 +555,25 @@ class Hmc < ConnectableServer
        end
        return false
    end
-
+   
    #create vNIC on LPAR profile
-   #chsyscfg -m Server-9117-MMA-SNxxxxx -r prof -i 'name=server_name,lpar_id=xx,"virtual_eth_adapters=596/1/596//0/1,506/1/506//0/1,"'
-   #slot_number/is_ieee/port_vlan_id/"additional_vlan_id,additional_vlan_id"/is_trunk(number=priority)/is_required
-   #Going to assume adapter will always be ieee
-   #For now we will pass 0 to is_trunk as that is how we've done it for years in previous automation
-   def create_vnic(frame,lpar_name,vlan_id,addl_vlan_ids)
+   def create_vnic(frame,lpar_name,vlan_id,addl_vlan_ids, is_trunk, is_required)
+    ##chsyscfg -m Server-9117-MMA-SNxxxxx -r prof -i 'name=server_name,lpar_id=xx,"virtual_eth_adapters=596/1/596//0/1,506/1/506//0/1,"'
+    #slot_number/is_ieee/port_vlan_id/"additional_vlan_id,additional_vlan_id"/is_trunk(number=priority)/is_required
     lpar_prof = get_lpar_curr_profile(frame,lpar_name)
     slot_number = get_next_slot(frame,lpar_name,"eth")
-    is_trunk = "0"
-    is_required = "1"
-    execute_cmd("chsyscfg -m #{frame} -r prof -i \'name=#{lpar_prof},lpar_name=#{lpar_name},"+
+    #Going to assume adapter will always be ieee
+    #For is Trunk how do we determine the number for priority? Do we just let the user pass it?
+    result = execute_cmd("chsyscfg -m #{frame} -r prof -i \'name=#{lpar_prof},lpar_name=#{lpar_name},"+
                           "\"virtual_eth_adapters+=#{slot_number}/1/#{vlan_id}/\"#{addl_vlan_ids}" +
                           "\"/#{is_trunk}/#{is_required} \"\'")
    end
-
+   
    #Create vNIC on LPAR via DLPAR
-   def create_vnic_dlpar(frame, client_lpar)
-     #
+   #As writen today defaulting ieee_virtual_eth=0 sets us to Not IEEE 802.1Q compatible. To add compatability set value to 1
+   def create_vnic_dlpar(frame, lpar_name,vlan_id)
+      slot_number = get_next_slot(frame,lpar_name, "eth")
+      result = execute_cmd("chhwres -r virtualio -m #{frame} -o a -p #{lpar_name} --rsubtype eth -s #{slot_number} -a \"ieee_virtual_eth=0,port_vlan_id=#{vlan_id}\"")
    end
    
    #Get the MAC address of an LPAR
@@ -497,7 +622,12 @@ class Hmc < ConnectableServer
 =end
    end
    
-    
+   def defeat_rich_shomo(string)
+       if (string == "I have never seen the movie Aliens") then
+         return "Rich Defeated"
+       end
+   end
+      
       
    def parse_vscsi_syntax(vscsi_string)
      
