@@ -233,8 +233,12 @@ class Hmc < ConnectableServer
    #Sample output
    #dwin004:Running
    #rslpl004:Running
-   def list_status_of_lpars(frame)
-       execute_cmd "lssyscfg -m #{frame} -r lpar -F name:state"
+   def list_status_of_lpars(frame = nil)
+       if frame.nil?
+           #return lpars on all frames?
+       else
+        execute_cmd "lssyscfg -m #{frame} -r lpar -F name:state"
+       end
    end
    
    #Show all I/O adapters on the frame
@@ -296,7 +300,7 @@ class Hmc < ConnectableServer
       #Modify client LPAR's profile to no longer include the adapter
       #whose details occupy the vscsi_hash
       execute_cmd("chsyscfg -r prof -m #{frame} -i \"name=#{lpar_profile},lpar_name=#{lpar}," +
-                  "virtual_scsi_adapters-=#{client_slot}/client/#{server_lpar_id}/#{server_lpar}/#{server_slot_num}/#{is_req}\" ")
+                  "virtual_scsi_adapters-=#{client_slot}/client/#{server_lpar_id}/#{server_lpar}/#{server_slot}/#{is_req}\" ")
                   
       #Modify the server LPAR's profile to no longer include the client
       execute_cmd("chsyscfg -r prof -m #{frame} -i \"name=#{remote_lpar_profile},lpar_name=#{server_lpar}," +
@@ -305,16 +309,21 @@ class Hmc < ConnectableServer
    end
    
    #Remove vSCSI from LPARs via DLPAR
-   def remove_vscsi_dlpar(frame,lpar,server_lpar,client_slot,server_slot)
+   def remove_vscsi_dlpar(frame,lpar,server_lpar,vscsi_hash)
+      
+      client_slot = vscsi_hash[:virtual_slot_num]
+      server_slot = vscsi_hash[:remote_slot_num]
       
       #If the client LPAR is running, we have to do DLPAR on it.
-      if check_lpar_state(frame,lpar) == "Running"
-        execute_cmd("chhwres -r virtualio -m #{frame} -p #{lpar} -o r --rsubtype scsi -s #{client_slot_to_use} -a \"adapter_type=client,remote_lpar_name=#{server_lpar},remote_slot_num=#{server_slot_to_use}\" ")
-      end
+      #if check_lpar_state(frame,lpar) == "Running"
+        #execute_cmd("chhwres -r virtualio -m #{frame} -p #{lpar} -o r --rsubtype scsi -s #{client_slot}")
+        #-a \"adapter_type=client,remote_lpar_name=#{server_lpar},remote_slot_num=#{server_slot}\" ")
+      #end
       
       #If the server LPAR is running, we have to do DLPAR on it.
       if check_lpar_state(frame,server_lpar) == "Running"
-        execute_cmd("chhwres -r virtualio -m #{frame} -p #{server_lpar} -o r --rsubtype scsi -s #{server_slot_to_use} -a \"adapter_type=server,remote_lpar_name=#{lpar},remote_slot_num=#{client_slot_to_use}\" ")
+        execute_cmd("chhwres -r virtualio -m #{frame} -p #{server_lpar} -o r --rsubtype scsi -s #{server_slot}")
+        #-a \"adapter_type=server,remote_lpar_name=#{lpar},remote_slot_num=#{client_slot}\" ")
       end
    end
    
