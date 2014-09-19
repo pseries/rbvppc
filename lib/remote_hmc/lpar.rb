@@ -146,10 +146,11 @@ class Lpar
     end
     
     #Get the MAC address of an LPAR
-    def get_mac_address(frame, client_lpar)
-        result = hmc.execute_cmd("lshwres -r virtualio --rsubtype eth --level lpar -m #{frame} -F mac_addr --filter \"lpar_names=#{client_lpar}\" ")
+    def get_mac_address
+        result = hmc.execute_cmd("lshwres -r virtualio --rsubtype eth --level lpar -m #{frame} -F mac_addr --filter \"lpar_names=#{name}\" ")
         return result.chomp
     end
+    
     
     
     #Set an LPAR profile's attribute, specifying the units to set the attribute to and the HMC label for the attribute
