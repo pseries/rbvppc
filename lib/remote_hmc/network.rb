@@ -20,8 +20,7 @@ class Network
 		@gateway				= options_hash[:gateway]
 		@dns					= options_hash[:dns]
 		@given_name				= options_hash[:given_name]
-		@vlan_id				= options_hash[:vlan_id]
-      
+		@vlan_id				= options_hash[:vlan_id]      
 	end
 	
 	def update_dns(new_dns,old_dns=nil)
@@ -36,6 +35,7 @@ class Network
 			i = @dns.index(old_dns)
 			@dns[i] = new_entry
 		end
+	end
 
 	def update_gateway(new_gateway)
 		@gateway = new_gateway
