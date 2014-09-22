@@ -36,4 +36,12 @@ class Network
 			i = @dns.index(old_dns)
 			@dns[i] = new_entry
 		end
+
+	def update_gateway(new_gateway)
+		@gateway = new_gateway
+	end
+	
+	def update_given_name(new_name)
+		@vlan_id = new_name
+	end
 end
