@@ -6,11 +6,11 @@ class Network
 		raise StandardError.new("A Network cannot be defined without a IP Address") if options_hash[:ip_address].nil?
 		raise StandardError.new("A Network cannot be defined without a Subnet Mask") if options_hash[:subnet_mask].nil?
 		raise StandardError.new("A Network cannot be defined without specifying if it is the primary network or not") if options_hash[:is_primary].nil? or (options_hash[:is_primary] != "false" and options_hash[:is_primary] != "true")
-        
+        raise StandardError.new("A Network cannot be defined without specifying a VLAN ID") if options_hash[:vlan_id].nil?
+
 		#Test for optional parameters
 		warn ("Warning: Gateway not defined") if options_hash[:gateway].nil?
 		warn ("Warning: DNS not defined") if options_hash[:dns].nil?
-		warn ("Warning: VLAN ID not defined") if options_hash[:vlan_id].nil?
 		warn ("Warning: Given Name not defined") if options_hash[:given_name].nil?
 		
 		#Parameters

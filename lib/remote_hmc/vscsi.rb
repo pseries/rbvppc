@@ -1,0 +1,22 @@
+class Vscsi
+
+	attr_accessor :virtual_slot_num, 
+				  :client_or_server,
+				  :remote_lpar_id,
+				  :remote_lpar_name,
+				  :remote_slot_num,
+				  :is_required
+
+	def initialize(virtual_slot_num, client_or_server, remote_lpar_id,
+					 remote_lpar_name, remote_slot_num, is_required)
+   
+		#Test for the explicitly required parameters
+		raise StandardError.new("A vSCSI cannot be defined without a virtual_slot_num") if virtual_slot_num.nil?
+		raise StandardError.new("A vSCSI cannot be defined without a client_or_server") if client_or_server.nil?
+		raise StandardError.new("A vSCSI cannot be defined without a remote_lpar_id") if remote_lpar_id.nil?
+		raise StandardError.new("A vSCSI cannot be defined without a remote_lpar_name") if remote_lpar_name.nil?
+		raise StandardError.new("A vSCSI cannot be defined without specifying is_required") if is_required.nil?
+
+		
+	end
+end
