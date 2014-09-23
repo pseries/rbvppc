@@ -36,25 +36,25 @@ class Lpar
         
         #Parameters that are explicitly required to make an LPAR object
         @hmc				= options_hash[:hmc]
-        @desired_proc_units = options_hash[:des_proc]
-        @desired_memory     = options_hash[:des_mem]
-        @desired_vcpu       = options_hash[:des_vcpu]
+        @desired_proc_units = options_hash[:des_proc].to_f
+        @desired_memory     = options_hash[:des_mem].to_i
+        @desired_vcpu       = options_hash[:des_vcpu].to_i
         @frame				= options_hash[:frame]
         @name               = options_hash[:name]
         
         #Parameters that can be defaulted if they are not provided
         !options_hash[:hostname].nil? ? @hostname = options_hash[:hostname] : @hostname = @name
-        !options_hash[:min_proc].nil? ? @min_proc_units = options_hash[:min_proc] : @min_proc_units = @desired_proc_units
-        !options_hash[:max_proc].nil? ? @max_proc_units = options_hash[:max_proc] : @max_proc_units = @desired_proc_units
-        !options_hash[:max_mem].nil? ? @max_memory = options_hash[:max_mem] : @max_memory = @desired_memory
-        !options_hash[:min_mem].nil? ? @min_memory = options_hash[:min_mem] : @min_memory = @desired_memory
-        !options_hash[:max_vcpu].nil? ? @max_vcpu = options_hash[:max_vcpu] : @max_vcpu = @desired_vcpu
-        !options_hash[:min_vcpu].nil? ? @min_vcpu = options_hash[:min_vcpu] : @min_vcpu = @desired_vcpu
-        !options_hash[:max_virt_slots].nil? ? @max_virtual_slots = options_hash[:max_virt_slots] : @max_virtual_slots = 30
+        !options_hash[:min_proc].nil? ? @min_proc_units = options_hash[:min_proc].to_f : @min_proc_units = @desired_proc_units
+        !options_hash[:max_proc].nil? ? @max_proc_units = options_hash[:max_proc].to_f : @max_proc_units = @desired_proc_units
+        !options_hash[:max_mem].nil? ? @max_memory = options_hash[:max_mem].to_i : @max_memory = @desired_memory
+        !options_hash[:min_mem].nil? ? @min_memory = options_hash[:min_mem].to_i : @min_memory = @desired_memory
+        !options_hash[:max_vcpu].nil? ? @max_vcpu = options_hash[:max_vcpu].to_i : @max_vcpu = @desired_vcpu
+        !options_hash[:min_vcpu].nil? ? @min_vcpu = options_hash[:min_vcpu].to_i : @min_vcpu = @desired_vcpu
+        !options_hash[:max_virt_slots].nil? ? @max_virtual_slots = options_hash[:max_virt_slots].to_i : @max_virtual_slots = 30
         !options_hash[:current_profile].nil? ? @current_profile = options_hash[:current_profile] : @current_profile = @name + "_profile"
         !options_hash[:default_profile].nil? ? @default_profile	= options_hash[:default_profile] : @default_profile = @current_profile
         !options_hash[:sharing_mode].nil? ? @sharing_mode = options_hash[:sharing_mode] : @sharing_mode = "cap"
-        @sharing_mode == "uncap" ? @uncap_weight = options_hash[:uncap_weight] : @uncap_weight = nil
+        @sharing_mode == "uncap" ? @uncap_weight = options_hash[:uncap_weight].to_i : @uncap_weight = nil
         !options_hash[:proc_mode].nil? ? @proc_mode = options_hash[:proc_mode] : @proc_mode = "shared"
         
         #Parameters that hold no value unless the LPAR already exists
