@@ -32,7 +32,7 @@ class Lpar
         
         #TODO: We should not really be storing the hostname (or vlan_id, or management_ip) as an attribute of LPAR, much less any network configuration stuff...
         #Maybe we should consider a NetworkSettings class that is just an attribute of LPAR, which we leverage to find any network info we need here...?
-        raise StandardError.new("An Lpar cannot be defined without specifying it's FQDN") if options_hash[:hostname].nil?
+        raise StandardError.new("An Lpar cannot be defined without specifying it's FQDN") if options_hash[:hostname].nil? && options_hash[:name].nil?
         
         #Parameters that are explicitly required to make an LPAR object
         @hmc				= options_hash[:hmc]
@@ -41,9 +41,9 @@ class Lpar
         @desired_vcpu       = options_hash[:des_vcpu]
         @frame				= options_hash[:frame]
         @name               = options_hash[:name]
-        @hostname 		    = options_hash[:hostname]
         
         #Parameters that can be defaulted if they are not provided
+        !options_hash[:hostname].nil? ? @hostname = options_hash[:hostname] : @hostname = @name
         !options_hash[:min_proc].nil? ? @min_proc_units = options_hash[:min_proc] : @min_proc_units = @desired_proc_units
         !options_hash[:max_proc].nil? ? @max_proc_units = options_hash[:max_proc] : @max_proc_units = @desired_proc_units
         !options_hash[:max_mem].nil? ? @max_memory = options_hash[:max_mem] : @max_memory = @desired_memory
@@ -59,13 +59,15 @@ class Lpar
         
         #Parameters that hold no value unless the LPAR already exists
         #or create() is called
-        @id                 = nil
+        !options_hash[:id].nil? ? @id = options_hash[:id] : @id = nil
         
         #TODO: Implement the VIO pair as attributes of the LPAR???
     end
     
     #Create an LPAR
     def create
+        
+        #TODO: Stop function from proceeding if LPAR with this name already exists on the frame
         command = "mksyscfg -r lpar -m #{@frame} -i name=#{@name}, profile_name=#{@current_profile},boot_mode=norm," + 
             "auto_start=0,lpar_env=aixlinux,max_virtual_slots=#{@max_virtual_slots},desired_mem=#{@desired_memory}," + 
             "min_mem=#{@min_memory},max_mem=#{@max_memory},desired_procs=#{@desired_vcpu},min_procs=#{@min_vcpu}," + 
@@ -78,6 +80,10 @@ class Lpar
     
     #Delete an LPAR
     def delete
+        #TO-DO: Check that the LPAR with this name exists on the frame before trying to shutdown and delete it
+        #TO-DO: Remove all of the LPAR's disks/vSCSIs before deleting
+        #Do a hard shutdown and then remove the LPAR definition
+        hard_shutdown
         hmc.execute_cmd "rmsyscfg -r lpar -m #{frame} -n #{name}"
     end
     
@@ -150,7 +156,6 @@ class Lpar
         result = hmc.execute_cmd("lshwres -r virtualio --rsubtype eth --level lpar -m #{frame} -F mac_addr --filter \"lpar_names=#{name}\" ")
         return result.chomp
     end
-    
     
     
     #Set an LPAR profile's attribute, specifying the units to set the attribute to and the HMC label for the attribute
