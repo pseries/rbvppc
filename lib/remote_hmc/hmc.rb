@@ -67,7 +67,7 @@ class Hmc < ConnectableServer
     def get_lpar_info(frame, lpar)
         
         profile_name = get_lpar_curr_profile(frame,lpar)
-        info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\' "
+        info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\',lpar_names=\'#{lpar}\' "
                     #"-F name,lpar_name,lpar_id,min_mem,desired_mem,max_mem,proc_mode,min_proc_units," + 
                     #"desired_proc_units,max_proc_units,min_procs,desired_procs,max_procs,sharing_mode,uncap_weight,max_virtual_slots"
         attributes = info.chomp.split(",")
