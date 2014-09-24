@@ -309,7 +309,7 @@ class Lpar
               vscsi = Vscsi.new(scsi_adapter[0],scsi_adapter[1],scsi_adapter[2],scsi_adapter[3],scsi_adapter[4],scsi_adapter[5])
               vscsi_adapters.push(vscsi)
             end
-        else
+        elsif !scsi_adapter_output.empty?
             scsi_adapter = scsi_adapter_output
             scsi_adapter = scsi_adapter.split("/")
             vscsi = Vscsi.new(scsi_adapter[0],scsi_adapter[1],scsi_adapter[2],scsi_adapter[3],scsi_adapter[4],scsi_adapter[5])
