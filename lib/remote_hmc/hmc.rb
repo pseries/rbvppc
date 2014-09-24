@@ -63,7 +63,9 @@ class Hmc < ConnectableServer
     return def_prof.chomp
    end
    
-    #Get the general attributes of an lpar
+    #Get the general attributes of an lpar by specifying 
+    #the frame and lpar names as Strings. Returns an options 
+    #hash representing that LPAR
     def get_lpar_info(frame, lpar)
         
         profile_name = get_lpar_curr_profile(frame,lpar)

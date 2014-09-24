@@ -126,18 +126,150 @@ class Vio < Lpar
         return disks
     end
     
+
+    ####################################
+    # Disk Mapping Functions
+    ####################################
+
+    #Use this in coordination with another VIO to find an available disk between the both of them
+    #A hash is returned with a selected Lun object on each VIO
+    def select_any_avail_disk(second_vio)
+        primary_vio_disks = available_disks
+        secondary_vio_disks = second_vio.available_disks
+        
+        return {} if primary_vio_disks.empty? or secondary_vio_disks.empty?
+        
+        vio1_lun = primary_vio_disks[0]
+        vio2_lun = nil
+        secondary_vio_disks.each do |lun|
+            if vio1_lun == lun
+                vio2_lun = lun
+                break
+            end
+        end
+    
+        if vio2_lun.nil?
+            raise StandardError.new("LUN with PVID #{vio1_lun.pvid} not found on #{vio2}")
+        end
+        # return [vio1_disk_name, vio2_disk_name]
+        # return [vio1_lun, vio2_lun]
+        return {:on_vio1 => vio1_lun, :on_vio2 => vio2_lun}
+    end
+
+    #Select a subset of available disks on this VIO and the given Secondary VIO
+    #that satisfies at least the size requirement provided
+    #TODO: Finish this function...
+    def select_disks_by_size(second_vio,total_size)
+        primary_vio_disks = available_disks
+        secondary_vio_disks = second_vio.available_disks
+
+        #Return an empty hash if one or both of the VIOs have no free disks to use
+        return {} if primary_vio_disks.empty? or secondary_vio_disks.empty?
+
+        #Find a collection of disks that works on one of the VIOs
+        sorted_disks = primary_vio_disks.sort { |x,y| x.size_in_mb <=> y.size_in_mb }
+        space_left = total_size
+        selected_disks = []
+        disks_found = false
+        until disks_found
+            if space_left <= 0
+                disks_found = true
+                break
+            end
+            sorted_disks.each do |cur_disk|
+
+            end
+
+
+        end
+
+        #Iterate over the disks that were found on the first VIO
+        #and generate a list of their counterparts on the second VIO
+
+        #Return a hash of two arrays, one of which is a list of Luns on the first VIO
+        #and ther other of which is a list of their counterparts on the second VIO
+
+    end
+
     #Map any disk on a pair of VIO's given the respective vhosts to map them to
     def map_any_disk(vhost, second_vio, second_vhost)
-        #Select disk on each VIO
+        #Select disk on each VIO and return a hash containing
+        #the LUN object from each of the VIOs
         lun_hash = select_any_avail_disk(second_vio)
 
         #Generate the vtd name to use on each VIO
+        vtd1_name = "vtd_test" + lun_hash[:on_vio1].name
+        vtd2_name = "vtd_test" + lun_hash[:on_vio2].name
 
         #Assign disk to the first VIO (self)
-        assign_disk_vhost(lun_hash[:on_vio1],"vtd_name_test",vhost)
+        assign_disk_vhost(lun_hash[:on_vio1],vtd1_name,vhost)
 
         #Assign disk to the second VIO
-        second_vio.assign_disk_vhost(lun_hash[:on_vio2],"vtd_name_test",second_vhost)
+        second_vio.assign_disk_vhost(lun_hash[:on_vio2],vtd2_name,second_vhost)
+    end
+
+    #Unmap all disks on given LPAR from this VIO and the given secondary VIO
+    #and remove their associated vSCSI adapters
+    def unmap_all_disks(second_vio,client_lpar)
+        vscsi_adapters = client_lpar.get_vscsi_adapters
+
+        #Repeat for each vSCSI found on the client LPAR
+        vscsi_adapters.each do |vscsi|            
+            #Determine if this adapter is attached to the primary VIO (self)
+            #or the secondary VIO (second_vio), and assign that to a temp
+            #variable to prevent rewriting the same procedure for both VIOs.
+            if vscsi.remote_lpar_name == name
+                current_vio = self
+            elsif vscsi.remote_lpar_name == second_vio.name
+                current_vio = second_vio
+            else
+                next
+            end
+
+            #Find the vhost associated with this vSCSI on the current VIO
+            vhost = current_vio.find_vhost_given_virtual_slot(vscsi.remote_slot_num)
+
+            #Use the vhost to find all of the disks attached to it
+            disks = current_vio.get_attached_disks(vhost)
+
+            #Remove all of the disks from that vhost
+            disks.each do |disk|
+                current_vio.remove_disk_from_vhost(disk)
+            end
+
+            #Remove that vhost
+            current_vio.remove_vhost(vhost)
+
+            #Remove the client LPAR's vSCSI now that all the disks are detached from it
+            client_lpar.remove_vscsi(current_vio,vscsi)
+
+        end
+    end
+
+    #Unmap a disk on the given LPAR from this VIO and the given secondary VIO
+    #by the disks PVID
+    def unmap_by_pvid(second_vio,pvid)
+        # Iterate over the primary VIO's used disks, find the one
+        # we want to remove by it's PVID, find that disk on the Secondary VIO
+        # and unmap this disk from each VIO
+        used_disks.each do |vio1_disk|
+            if vio1_disk.pvid == pvid
+                #Find this disk on second_vio
+                second_vio_disks = second_vio.used_disks
+                i = second_vio_disks.index(vio1_disk)
+                raise StandardError.new("Disk with PVID #{pvid} not mapped on #{second_vio.name}. Please ensure this disk is attached to both VIOs in the pair") if i.nil?
+                vio2_disk = second_vio_disks[i]
+
+                #Unmap disk on first VIO
+                remove_disk_from_vhost(vio1_disk)
+
+                #Unmap disk on second VIO
+                second_vio.remove_disk_from_vhost(vio2_disk)
+
+                return
+            end
+        end
+        raise StandardError.new("Disk with PVID #{pvid} not mappped on #{name}. Please ensure this disk is attached to the VIO")
     end
 
     #Find vhost to use when given the vSCSI adapter slot it occupies
@@ -166,31 +298,7 @@ class Vio < Lpar
     def list_shared_eth_adapters
         command = "lsmap -all -net"
         execute_vios_cmd(command)
-    end
-    
-    #Use this in coordination with another VIO to find an available disk between the both of them
-    def select_any_avail_disk(second_vio)
-        primary_vio_disks = available_disks
-        secondary_vio_disks = second_vio.available_disks
-        
-        return {} if primary_vio_disks.empty? or secondary_vio_disks.empty?
-        
-            vio1_lun = primary_vio_disks[0]
-            vio2_lun = nil
-            secondary_vio_disks.each do |lun|
-            if vio1_lun == lun
-                vio2_lun = lun
-                break
-            end
-        end
-    
-        if vio2_lun.nil?
-            raise StandardError.new("LUN with PVID #{vio1_lun.pvid} not found on #{vio2}")
-        end
-        # return [vio1_disk_name, vio2_disk_name]
-        # return [vio1_lun, vio2_lun]
-        return {:on_vio1 => vio1_lun, :on_vio2 => vio2_lun}
-    end
+    end    
     
     #Assign Disk/Logical Volume to a vSCSI Host Adapter
     def assign_disk_vhost(disk, vtd, vhost)
@@ -230,6 +338,31 @@ class Vio < Lpar
     def remove_vhost(vhost)
         command = "rmdev -dev #{vhost}"
         execute_vios_cmd(command)
+    end
+
+
+    #########################################
+    # Base LPAR function overrides
+    # to prevent VIOs from performing
+    # actions that may destroy/adversely 
+    # effect an environment's VIOs
+    # ie, we shouldn't be able to delete,
+    # or create VIOs, just manage them.
+    #########################################
+    def create
+        warn "Unable to execute create on a VIO"
+    end
+    
+    def delete
+        warn "Unable to execute delete on a VIO"
+    end
+    
+    def hard_shutdown
+        warn "Unable to execute hard_shutdown on a VIO"
+    end
+    
+    def soft_shutdown
+        warn "Unable to execute soft_shutdown on a VIO"
     end
  
 end
