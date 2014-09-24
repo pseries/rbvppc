@@ -8,6 +8,8 @@
     customization.
 =end
 require_relative 'hmc'
+require_relative 'vscsi'
+require_relative 'network'
 
 class Lpar 
     
@@ -297,13 +299,23 @@ class Lpar
         
         #Get vSCSI adapter info from this LPAR's profile
         scsi_adapter_output = clean_vadapter_string(hmc.execute_cmd("lssyscfg -r prof -m #{frame} --filter 'lpar_names=#{name},profile_names=#{current_profile}' -F virtual_scsi_adapters").chomp)
-        
+        vscsi_adapters  = []
         if scsi_adapter_output.include?(",")
             scsi_adapters = scsi_adapter_output.split(/,/)
+            #split on /
+            #11/client/1/rslppc09a/17/0,12/client/2/rslppc09b/17/0
+            scsi_adapters.each do |scsi_adapter|
+              scsi_adapter = scsi_adapter.split("/")
+              vscsi = Vscsi.new(scsi_adapter[0],scsi_adapter[1],scsi_adapter[2],scsi_adapter[3],scsi_adapter[4],scsi_adapter[5])
+              vscsi_adapters.push(vscsi)
+            end
         else
-            scsi_adapters = [scsi_adapter_output]
+            scsi_adapter = scsi_adapter_output
+            scsi_adapter = scsi_adapter.split("/")
+            vscsi = Vscsi.new(scsi_adapter[0],scsi_adapter[1],scsi_adapter[2],scsi_adapter[3],scsi_adapter[4],scsi_adapter[5])
+            vscsi_adapters.push(vscsi)
         end
-        return scsi_adapters
+        return vscsi_adapters
     end
     
     #Unnecessary??? using the accessor lpar.max_virtual_slots should
@@ -395,47 +407,42 @@ class Lpar
     #then it looks for an adapter on lpar that is attached to server_lpar
     #and removes that from the profile/hardware of both the client
     #and server
+    #MAY BE DANGEROUS- if multiple vSCSI adapters on a single lpar pointing at the same VIO
     def remove_vscsi(server_lpar,adapter_details=nil)
         if adapter_details.nil?
             adapters = get_vscsi_adapters
             adapters.each do |adapter|
-                adapter_details = adapter if adapter.include?(server_lpar.name)
+                adapter_details = adapter if adapter.remote_lpar_name == server_lpar.name
             end
         end
-    
-        #Parse the adapter details into a hash
-        adapter_hash = parse_vscsi_syntax(adapter_details)
-    
+        
         #Remove this vSCSI from the lpar and server lpar profiles
-        remove_vscsi_from_profile(server_lpar,adapter_hash)
+        remove_vscsi_from_profile(server_lpar,adapter_details)
     
         #Remove this vSCSI from the actual hardware of lpar and server lpar
-        remove_vscsi_dlpar(server_lpar,adapter_hash)
+        remove_vscsi_dlpar(server_lpar,adapter_details)
     
     end
     
     #Remove vSCSI from the LPAR profiles only
-    def remove_vscsi_from_profile(server_lpar,vscsi_hash)
+    def remove_vscsi_from_profile(server_lpar,vscsi)
         remote_lpar_profile = server_lpar.current_profile
         client_lpar_id = id
-    
-        #TODO: Add checking of vscsi_hash to make sure it's populated
-        #      the way it's expected to be
-    
-        client_slot = vscsi_hash[:virtual_slot_num]
-        server_lpar_id = vscsi_hash[:remote_lpar_id]
-        if server_lpar != vscsi_hash[:remote_lpar_name]
+             
+        client_slot = vscsi.virtual_slot_num
+        server_lpar_id = vscsi.remote_lpar_id
+        if server_lpar != vscsi.remote_lpar_name
             #server_lpar and the LPAR cited in the
             #vscsi hash aren't the same...
             #error out or do something else here...?
         end
-        server_slot = vscsi_hash[:remote_slot_num]
-        is_req = vscsi_hash[:is_required]
+        server_slot = vscsi.remote_slot_num
+        is_req = vscsi.is_required
     
         #Modify client LPAR's profile to no longer include the adapter
         #whose details occupy the vscsi_hash
         hmc.execute_cmd("chsyscfg -r prof -m #{frame} -i \"name=#{current_profile},lpar_name=#{name}," +
-            "virtual_scsi_adapters-=#{client_slot}/client/#{server_lpar_id}/#{server_lpar}/#{server_slot}/#{is_req}\" ")
+            "virtual_scsi_adapters-=#{client_slot}/client/#{server_lpar_id}/#{server_lpar.name}/#{server_slot}/#{is_req}\" ")
           
         #Modify the server LPAR's profile to no longer include the client
         hmc.execute_cmd("chsyscfg -r prof -m #{server_lpar.frame} -i \"name=#{remote_lpar_profile},lpar_name=#{server_lpar.name}," +
@@ -444,10 +451,10 @@ class Lpar
     end
     
     #Remove vSCSI from LPARs via DLPAR
-    def remove_vscsi_dlpar(server_lpar,vscsi_hash)
+    def remove_vscsi_dlpar(server_lpar,vscsi)
     
-        client_slot = vscsi_hash[:virtual_slot_num]
-        server_slot = vscsi_hash[:remote_slot_num]
+        client_slot = vscsi.virtual_slot_num
+        server_slot = vscsi.remote_slot_num
     
         #If the client LPAR is running, we have to do DLPAR on it.
         #if check_lpar_state(frame,lpar) == "Running"
