@@ -66,7 +66,7 @@ class Hmc < ConnectableServer
     #Get the general attributes of an lpar by specifying 
     #the frame and lpar names as Strings. Returns an options 
     #hash representing that LPAR
-    def get_lpar_info(frame, lpar)
+    def get_lpar_options(frame, lpar)
         
         profile_name = get_lpar_curr_profile(frame,lpar)
         info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\',lpar_names=\'#{lpar}\' "
@@ -158,11 +158,19 @@ class Hmc < ConnectableServer
        return false
    end
    
-   def get_lpar_options(client_lpar)
-       
-       
-   end
    
+
+
+
+
+
+
+
+
+
+
+
+
    #########################################################################
    # Depracated functions
    #########################################################################

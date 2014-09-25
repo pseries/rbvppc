@@ -10,19 +10,15 @@ class Vio < Lpar
         raise StandardError.new("A VIO cannot be defined without a managing HMC") if hmc.nil?
         raise StandardError.new("A VIO cannot be defined without a name") if name.nil?
         raise StandardError.new("A VIO cannot be difined without specifying the frame that it resides on") if frame.nil?
-                
-        hmc.connect
-        options_hash = hmc.get_lpar_info(frame,name)        
         
-        #Set to 'default' values to leverage parent class' constructor
-        #options_hash[:des_proc]   = "1.0"
-        #options_hash[:des_vcpu]       = "1"
-        #options_hash[:des_mem]       = "4096"
-        #options_hash[:current_profile]      = current_profile
-        #options_hash[:hostname]             = @name
-                
+        #Connect to the HMC and pull all of the LPAR attributes required for
+        #the superclass' constructor        
+        hmc.connect
+        options_hash = hmc.get_lpar_options(frame,name)        
+                        
         super(options_hash)
         
+        #Get an initial list of the available (and used) disks
         list_available_disks
     end
 
@@ -54,7 +50,7 @@ class Vio < Lpar
 
 
     ####################################
-    # Disk listing functions
+    # VIO listing functions
     ####################################
 
     #List unmapped disks on VIOS
@@ -126,6 +122,27 @@ class Vio < Lpar
         return disks
     end
     
+    #Find vhost to use when given the vSCSI adapter slot it occupies
+    def find_vhost_given_virtual_slot(server_slot)
+        command = "lsmap -all"
+        
+        #TODO: Save the vhost-to-virtualslot mapping somewhere in the class
+        #and simply iterate over that, refreshing what the mappings are any
+        #time an adapter is added or removed from this LPAR (???)
+        
+        #Execute an lsmap and grep for the line that contains the vhost
+        #by finding the line that contains the physical adapter location.
+        #This will definitely contain 'V#-C<slot number>' in it's name.
+        result = execute_vios_cmd_grep(command,"V.-C#{server_slot}")
+        raise StandardError.new("Unable to find vhost on #{name} for vSCSI adapter in slot #{server_slot}") if result.nil?
+        
+        #Split the result on whitespace to get the columns
+        #vhost, physical location, client LPAR ID (in hex)
+        mapping_cols = result.split(/[[:blank:]]+/)
+        
+        #The name of the vhost will be in the first column of the command output
+        return mapping_cols[0]
+    end
 
     ####################################
     # Disk Mapping Functions
@@ -167,12 +184,17 @@ class Vio < Lpar
 
         #Find a collection of disks that works on one of the VIOs
         sorted_disks = primary_vio_disks.sort { |x,y| x.size_in_mb <=> y.size_in_mb }
+
         #Convert the requested size to MB, as all LUN sizes are in those units
+        #And initialize a variable to hold the 'currently' allocated amount in MB
         space_left = total_size_in_gb*1024
         space_allocated = 0
+
         #Let the upper limit of what we can allocate be
         #the total size in GB, plus 64GB (a typical size of a LUN), converted to MB
         upper_limit = (total_size_in_gb+64)*1024
+
+        #Array that will be built up to hold the selected disks on the primary VIO
         selected_disks = []
         disks_found = false
         last_disk = nil
@@ -281,14 +303,42 @@ class Vio < Lpar
 
         #Generate the vtd name to use on each VIO
         #TODO: 
-        vtd1_name = "vtd_test_" + lun_hash[:on_vio1].name
-        vtd2_name = "vtd_test_" + lun_hash[:on_vio2].name
+        vtd1_name = "vtd_" + lun_hash[:on_vio1].name
+        vtd2_name = "vtd_" + lun_hash[:on_vio2].name
 
         #Assign disk to the first VIO (self)
         assign_disk_vhost(lun_hash[:on_vio1],vtd1_name,vhost)
 
         #Assign disk to the second VIO
         second_vio.assign_disk_vhost(lun_hash[:on_vio2],vtd2_name,second_vhost)
+    end
+
+    #Maps a group of disks to the specified vhosts on a pair of VIOs
+    #based on a given total size requirement
+    def map_by_size(vhost,second_vio,second_vhost,total_size_in_gb)
+        lun_hash = select_disks_by_size(second_vio,total_size_in_gb)
+
+        #Raise an error if lun_hash is an empty hash
+        raise StandardError.new("VIO pair does not have a subset of available disks to satisfy the requested size of #{total_size_in_gb}") if lun_hash.empty?
+
+        vio1_disks = lun_hash[:on_vio1]
+        vio2_disks = lun_hash[:on_vio2]
+
+        # TODO: Possibly find a way to test that the vhost exists
+        # prior to doing anything (ie, make sure the client LPAR
+        # that this serves has vSCSIs defined for this)
+
+        #Assign all disks to first VIO
+        vio1_disks.each do |disk|
+            vtd_name = "vtd_" + disk.name
+            assign_disk_vhost(disk,vtd_name,vhost)
+        end
+
+        #Assign all disks to second VIO
+        vio2_disks.each do |disk|
+            vtd_name = "vtd_" + disk.name
+            second_vio.assign_disk_vhost(disk,vtd_name,second_vhost)
+        end
     end
 
     #Unmap all disks on given LPAR from this VIO and the given secondary VIO
@@ -355,28 +405,11 @@ class Vio < Lpar
         raise StandardError.new("Disk with PVID #{pvid} not mappped on #{name}. Please ensure this disk is attached to the VIO")
     end
 
-    #Find vhost to use when given the vSCSI adapter slot it occupies
-    def find_vhost_given_virtual_slot(server_slot)
-        command = "lsmap -all"
-        
-        #TODO: Save the vhost-to-virtualslot mapping somewhere in the class
-        #and simply iterate over that, refreshing what the mappings are any
-        #time an adapter is added or removed from this LPAR (???)
-        
-        #Execute an lsmap and grep for the line that contains the vhost
-        #by finding the line that contains the physical adapter location.
-        #This will definitely contain 'V#-C<slot number>' in it's name.
-        result = execute_vios_cmd_grep(command,"V.-C#{server_slot}")
-        raise StandardError.new("Unable to find vhost on #{name} for vSCSI adapter in slot #{server_slot}") if result.nil?
-        
-        #Split the result on whitespace to get the columns
-        #vhost, physical location, client LPAR ID (in hex)
-        mapping_cols = result.split(/[[:blank:]]+/)
-        
-        #The name of the vhost will be in the first column of the command output
-        return mapping_cols[0]
-    end
-            
+
+    ############################################
+    # VIO command functions
+    ############################################
+
     #List Shared Ethernet Adapters on VIOS
     def list_shared_eth_adapters
         command = "lsmap -all -net"
