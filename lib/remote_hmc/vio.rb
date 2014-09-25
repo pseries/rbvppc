@@ -158,8 +158,7 @@ class Vio < Lpar
 
     #Select a subset of available disks on this VIO and the given Secondary VIO
     #that satisfies at least the size requirement provided
-    #TODO: Finish this function...
-    def select_disks_by_size(second_vio,total_size)
+    def select_disks_by_size(second_vio,total_size_in_gb)
         primary_vio_disks = available_disks
         secondary_vio_disks = second_vio.available_disks
 
@@ -168,26 +167,109 @@ class Vio < Lpar
 
         #Find a collection of disks that works on one of the VIOs
         sorted_disks = primary_vio_disks.sort { |x,y| x.size_in_mb <=> y.size_in_mb }
-        space_left = total_size
+        #Convert the requested size to MB, as all LUN sizes are in those units
+        space_left = total_size_in_gb*1024
+        space_allocated = 0
+        #Let the upper limit of what we can allocate be
+        #the total size in GB, plus 64GB (a typical size of a LUN), converted to MB
+        upper_limit = (total_size_in_gb+64)*1024
         selected_disks = []
         disks_found = false
+        last_disk = nil
         until disks_found
             if space_left <= 0
                 disks_found = true
                 break
             end
-            sorted_disks.each do |cur_disk|
+            #Save the current space_left for use later to determine if it was decremented in this iteration
+            old_space_left = space_left
 
+            sorted_disks.each do |cur_disk|
+                last_disk = cur_disk if last_disk.nil?
+                cur_disk_size = cur_disk.size_in_mb
+                #Test if this disk is larger than what is left and smaller than what our
+                #upper bound limit on allocating is
+                if (cur_disk_size >= space_left && space_allocated + cur_disk_size <= upper_limit)
+                    #puts "Entered block 1"
+                    #Add this disk to selected_disks
+                    selected_disks.push(cur_disk)
+                    #Decrement space_left
+                    space_left -= cur_disk_size
+                    #increment space_allocated
+                    space_allocated += cur_disk_size
+                    #set last_disk to cur_disk
+                    last_disk = cur_disk
+                    #remove cur_disk from sorted_disks
+                    sorted_disks.delete(cur_disk)
+                    #break out of loop to select next disk
+                    break
+                end
+
+                #Test if this disk is less than what we have left to allocate
+                #and still does not put us over the upper bound
+                if (cur_disk_size < space_left && cur_disk_size+space_allocated <= upper_limit)
+                    #puts "Entered block 2"
+                    if cur_disk_size <= (space_left - cur_disk_size)
+                        #puts "Entered block 2.1"
+                        #Add this disk to selected_disks
+                        selected_disks.push(cur_disk)
+                        #Decrement space_left
+                        space_left -= cur_disk_size
+                        #Increment space_allocated
+                        space_allocated += cur_disk_size
+                        #set last_disk to cur_disk
+                        last_disk = cur_disk
+                        #remove cur_disk from sorted_disks
+                        sorted_disks.delete(cur_disk)
+                        #break out of loop to select next disk
+                        break
+                    else
+                        #puts "Entered block 2.2"
+                        old_poss_next_disk = nil
+                        sorted_disks.reverse.each do |poss_next_disk|
+                            old_poss_next_disk = poss_next_disk if old_poss_next_disk.nil?
+                            poss_next_size = poss_next_disk.size_in_mb
+                            if (cur_disk_size + poss_next_size + space_allocated) <= upper_limit
+                                #Add this disk to selected_disks
+                                selected_disks.push(cur_disk)
+                                #decrement space_left
+                                space_left -= cur_disk_size
+                                #increment space_allocated
+                                space_allocated += cur_disk_size
+                                #Set last_disk to cur_disk
+                                last_disk = cur_disk
+                                #remove cur_disk from sorted_disks
+                                sorted_disks.delete(cur_disk)
+                                #break out of loop to select next disk
+                                break
+                            end
+                        end
+                    end
+
+                end
             end
 
-
+            #If after iterating over the entire list of disks, we haven't
+            #decremented space_left, then fail out, since it wasn't possible
+            #to find another disk to fit the requested size
+            if old_space_left == space_left
+                warn "Unable to select a subset of disks that fulfills the size requested"
+                return {}
+            end
         end
 
         #Iterate over the disks that were found on the first VIO
         #and generate a list of their counterparts on the second VIO
+        selected_disks_vio1 = selected_disks
+        selected_disks_vio2 = []
+        selected_disks_vio1.each do |disk|
+            i = secondary_vio_disks.index(disk)
+            selected_disks_vio2.push(secondary_vio_disks[i])
+        end
 
         #Return a hash of two arrays, one of which is a list of Luns on the first VIO
         #and ther other of which is a list of their counterparts on the second VIO
+        return { :on_vio1 => selected_disks_vio1, :on_vio2 => selected_disks_vio2}
 
     end
 
@@ -198,8 +280,9 @@ class Vio < Lpar
         lun_hash = select_any_avail_disk(second_vio)
 
         #Generate the vtd name to use on each VIO
-        vtd1_name = "vtd_test" + lun_hash[:on_vio1].name
-        vtd2_name = "vtd_test" + lun_hash[:on_vio2].name
+        #TODO: 
+        vtd1_name = "vtd_test_" + lun_hash[:on_vio1].name
+        vtd2_name = "vtd_test_" + lun_hash[:on_vio2].name
 
         #Assign disk to the first VIO (self)
         assign_disk_vhost(lun_hash[:on_vio1],vtd1_name,vhost)
