@@ -159,7 +159,7 @@ class Hmc < ConnectableServer
    end
    
    #Validate connection to hmc is established
-   def connected?
+   def is_connected?
         version = get_version
         if version.nil?
           return false
