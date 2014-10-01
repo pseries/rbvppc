@@ -84,9 +84,15 @@ class Nim < ConnectableServer
        execute_cmd "nim -F -o reset #{client_lpar.name}"
        #execute_cmd "nim -F -o reset #{client_lpar}"
    end
+
+   #Deallocates any/all NIM resources from the client manchine
+   def deallocate_resources(client_lpar)
+      execute_cmd "nim -o deallocate -a subclass=all #{client_lpar.name}"
+   end
    
    #Remove a NIM client
    def remove_client(client_lpar)
+      deallocate_resources(client_lpar)
       execute_cmd "nim -F -o remove #{client_lpar.name}"
    end
    
@@ -121,7 +127,7 @@ class Nim < ConnectableServer
    #Deploy mksysb image to NIM client
    def deploy_image(client_lpar, mksysb_name, spot_name, firstboot_script, lpp_source = nil)
       
-      bosinst_data_obj = client_lpar+"_bid"
+      bosinst_data_obj = client_lpar.name+"_bid"
       #NIM command to start a remote mksysb install on NIM client
       execute_cmd "nim -o bos_inst -a source=mksysb -a mksysb=#{mksysb_name} -a bosinst_data=#{bosinst_data_obj} -a no_nim_client=no " +
                   "-a fb_script=#{firstboot_script} -a accept_licenses=yes -a spot=#{spot_name} -a boot_client=no #{client_lpar.name}"
@@ -140,7 +146,7 @@ class Nim < ConnectableServer
       yield(client_lpar,gateway,subnetmask)
       
       until check_install_status(client_lpar).match(/ready for a NIM operation/i) do
-         puts "Waiting for BOS install for #{client_lpar} to finish...."
+         puts "Waiting for BOS install for #{client_lpar.name} to finish...."
          sleep 30
       end
       
@@ -177,7 +183,7 @@ class Nim < ConnectableServer
       EOS
       
       #Create bid contents file on NIM
-      execute_cmd "mkdir -p /darwin; echo #{bid_contents} > /darwin/#{client_lpar.name}_bid"
+      execute_cmd "mkdir -p /darwin; echo '#{bid_contents}' > /darwin/#{client_lpar.name}_bid"
       
       
       #Define the BID object
