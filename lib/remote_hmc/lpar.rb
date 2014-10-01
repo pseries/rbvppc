@@ -117,9 +117,17 @@ class Lpar
     end
     
     #Returns true/false value depending on if the LPAR is running or not
+    #Since an LPAR can have states such as "Not Activated", "Open Firmware", "Shutting Down",
+    #this function only helps for when we are explicitly looking for an LPAR to be either "Running" or not.
     def is_running?
         #TODO: should this return true if "Open Firmware" is the status as well..? No, it shouldn't
         return check_state == "Running"	
+    end
+
+    #Similar to is_running? - only returns true if the LPAR's state is "Not Activated".
+    #Any other state is percieved as false
+    def not_activated?
+        return check_state == "Not Activated"
     end
     
     def get_info
@@ -165,16 +173,32 @@ class Lpar
         hmc.execute_cmd(cmd)
     end
     
+    #Function to use for all Min/Max attribute changing
+    def set_attr_and_reactivate(units,hmc_label)
+        #Change the profile attribute
+        set_attr_profile(units,hmc_label)
+        #Shut down the LPAR
+        soft_shutdown
+        #Wait until it's state is "Not Activated"
+        sleep(10) until not_activated?
+        #Reactivate the LPAR so that the attribute changes take effect
+        activate
+    end
+
     #####################################
     # Processing Unit functions
     #####################################
-    
+        
     #Set the processing units for an LPAR
     def desired_proc_units=(units)
         
-        raise StandardError.new("Processing unit value is lower than the Minimum Processing Units specified for this LPAR") if units < min_proc_units
-        raise StandardError.new("Processing unit value is higher than the Maximum Processing Units specified for this LPAR") if units > max_proc_units
+        raise StandardError.new("Processing unit value is lower than the Minimum Processing Units specified for this LPAR: #{min_proc_units}") if units < min_proc_units
+        raise StandardError.new("Processing unit value is higher than the Maximum Processing Units specified for this LPAR: #{max_proc_units}") if units > max_proc_units
         
+        #Validate that this value adheres to the vCPU:Proc_unit ratio of 10:1
+        raise StandardError.new("Desired processing unit value must be less than or equal to Desired vCPU value: #{desired_vcpu}") if units > desired_vcpu
+        raise StandardError.new("Desired processing unit value must be at least 1/10 the Desired vCPU value: #{desired_vcpu}") if desired_vcpu/units > 10
+
         #Set processing units on the Profile
         set_attr_profile(units,"desired_proc_units")
         #Set processing units via DLPAR
@@ -189,18 +213,15 @@ class Lpar
     def max_proc_units=(units)
         raise StandardError.new("Maximum processing unit value is lower than the Desired Processing Units specified for this LPAR") if units < desired_proc_units
         
+        #Validate that the value specified does not violate the 10:1 ratio requirement between max vCPU and max proc units.
+        raise StandardError.new("Maximum processing unit value must be less than or equal to Maximum vCPU value: #{max_vcpu}") if units > max_vcpu
+        raise StandardError.new("Maximum processing unit value must at least be 1/10 the Maximum vCPU value: #{max_vcpu}") if max_vcpu/units > 10
+        
         #Set the Max Proc Units on the LPAR profile
-        set_attr_profile(units,"max_proc_units")
+        #and reactivate the LPAR
+        set_attr_and_reactivate(units,"max_proc_units")
         
-        #Shutdown and reactivate this LPAR for this to take effect in the HMC
-        soft_shutdown
-        
-        #Wait until the LPAR isn't running anymore
-        sleep(5) until check_state == "Not Activated"
-        
-        #Reactivate the LPAR using the same profile
-        activate
-        
+        #Set the private member        
         @max_proc_units = units
     end
     
@@ -208,18 +229,15 @@ class Lpar
     def min_proc_units=(units)
         raise StandardError.new("Minimum processing unit value is greater than the Desired Processing Units specified for this LPAR") if units > desired_proc_units
         
+        #Validate that this value adheres to the vCPU:Proc_unit ratio of 10:1
+        raise StandardError.new("Minimum processing unit value must be less than or equal to Minimum vCPU value: #{min_vcpu}") if units > min_vcpu
+        raise StandardError.new("Minimum processing unit value must be at least 1/10 the Minimum vCPU value: #{min_vcpu}") if min_vcpu/units > 10
+
         #Set the Max Proc Units on the LPAR profile
-        set_attr_profile(units,"min_proc_units")
+        #and reactivate the LPAR
+        set_attr_and_reactivate(units,"min_proc_units")
         
-        #Shutdown and reactivate this LPAR for this to take effect in the HMC
-        soft_shutdown
-        
-        #Wait until the LPAR isn't running anymore
-        sleep(5) until !is_running?
-        
-        #Reactivate the LPAR using the same profile
-        activate
-        
+        #Set the private member
         @min_proc_units = units	
     end
     
@@ -246,29 +264,69 @@ class Lpar
     
     #Set the virtual CPUs for an LPAR
     def desired_vcpu=(units)
-        raise StandardError.new("Virtual CPU value is lower than the Minimum Virtual CPU value specified for this LPAR") if units < min_vcpu
-        raise StandardError.new("Virtual CPU value is higher than the Maximum Virtual CPU value specified for this LPAR") if units > max_vcpu
+        raise StandardError.new("Virtual CPU value is lower than the Minimum Virtual CPU value specified for this LPAR: #{min_vcpu}") if units < min_vcpu
+        raise StandardError.new("Virtual CPU value is higher than the Maximum Virtual CPU value specified for this LPAR: #{max_vcpu}") if units > max_vcpu
         
+        #Validate that this value adheres to the vCPU:Proc_unit ratio of 10:1
+        raise StandardError.new("Desired vCPU value must be greater than or equal to Desired processing unit value: #{desired_proc_units}") if units < desired_proc_units
+        raise StandardError.new("Desired vCPU value must be at most 10 times as large as Desired processing unit value: #{desired_proc_units}") if units/desired_proc_units > 10
+
+        #Set processing units on the Profile
+        set_attr_profile(units,"desired_procs")
+        #Set processing units via DLPAR
+        set_vcpu_dlpar(units)
         
+        #After the Desired Proc units are set on the profile and hardware, set
+        #the private attribute
+        @desired_vcpu = units
     end
     
-    
+    #Set the minimum virtual CPUs for an LPAR
+    def min_vcpu=(units)
+        raise StandardError.new("Minimum vCPU value is higher than the Desired Virtual CPU specified for this LPAR: #{desired_vcpu}") if units > desired_vcpu
+        
+        #Validate that this value adheres to the vCPU:Proc_unit ratio of 10:1
+        raise StandardError.new("Minimum vCPU value must be greater than or equal to Minimum processing unit value: #{min_proc_units}") if units < min_proc_units
+        raise StandardError.new("Minimum vCPU value must be at most 10 times as large as Minimum processing unit value: #{min_proc_units}") if units/min_proc_units > 10
+
+        #Set the Min vCPU on the LPAR profile
+        #and reactivate the LPAR
+        set_attr_and_reactivate(units,"min_procs")
+        
+        #Set the private member
+        @min_vcpu = units
+    end
+
+    #Set the maximum virtual CPUs for an LPAR
+    def max_vcpu=(units)
+        raise StandardError.new("Maximum vCPU value is lower than the Desired Virtual CPU specified for this LPAR: #{desired_vcpu}") if units < desired_vcpu
+        
+        #Validate that this value adheres to the vCPU:Proc_unit ratio of 10:1
+        raise StandardError.new("Maximum vCPU value must be greater than or equal to Maximum processing unit value: #{max_proc_units}") if units < max_proc_units
+        raise StandardError.new("Maximum vCPU value must be at most 10 times as large as Maximum processing unit value: #{max_proc_units}") if units/max_proc_units > 10
+
+        #Set the Max vCPU on the LPAR profile
+        #and reactivate the LPAR
+        set_attr_and_reactivate(units,"max_procs")
+        
+        #Set the private member
+        @max_vcpu = units
+    end
+
+    #Set the desired number of virtual CPUs for an LPAR using DLPAR commands
+    def set_vcpu_dlpar(units)
+        #This command adds or removes, it doesn't 'set'
+        units > desired_vcpu ? op="a" : op="r"
+        difference = (units-desired_vcpu).abs
+        if is_running?
+            hmc.execute_cmd("chhwres -r proc -m #{frame} -o #{op} -p #{name} --procs #{difference}")
+        end
+    end
+
     ############################################
     # Memory allocation/deallocation functions
     ############################################
-    
-    #Set the Memory allocated to an LPAR via DLPAR (in MB)
-    def set_memory_dlpar(units)
-        
-        units > desired_memory ? op="a" : op="r"
-        difference = (units-desired_memory).abs
-        
-        if is_running?
-            hmc.execute_cmd("chhwres -r mem -m #{frame} -o #{op} -p #{name} -q #{difference}") 
-            # chhwres -r mem -m Managed-System -o a -p Lpar_name -q 1024
-        end
-    end
-    
+
     #Set the Memory allocated to an LPAR (in MB)
     def desired_memory=(units)
         
@@ -284,7 +342,42 @@ class Lpar
         #After it has been set on the profile and the LPAR, set the attribute for the object
         @desired_memory = units
     end
-    
+
+    #Set the minimum virtual CPUs for an LPAR
+    def min_memory=(units)
+        raise StandardError.new("Minimum Memory value is higher than the Desired Memory specified for this LPAR: #{desired_memory}") if units > desired_memory
+        
+        #Set the Min Memory on the LPAR profile
+        #and reactivate
+        set_attr_and_reactivate(units,"min_mem")
+        
+        #Set private member
+        @min_memory = units
+    end
+
+    #Set the maximum virtual CPUs for an LPAR
+    def max_memory=(units)
+        raise StandardError.new("Maximum Memory value is lower than the Desired Memory specified for this LPAR: #{desired_memory}") if units < desired_memory
+        
+        #Set the Max vCPU on the LPAR profile
+        #and reactivate
+        set_attr_and_reactivate(units,"max_mem")
+        
+        #Set private member
+        @max_memory = units
+    end
+
+    #Set the Memory allocated to an LPAR via DLPAR (in MB)
+    def set_memory_dlpar(units)
+        
+        units > desired_memory ? op="a" : op="r"
+        difference = (units-desired_memory).abs
+        
+        if is_running?
+            hmc.execute_cmd("chhwres -r mem -m #{frame} -o #{op} -p #{name} -q #{difference}") 
+            # chhwres -r mem -m Managed-System -o a -p Lpar_name -q 1024
+        end
+    end   
     
     
     
