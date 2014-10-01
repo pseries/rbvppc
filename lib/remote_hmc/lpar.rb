@@ -157,8 +157,7 @@ class Lpar
     def get_mac_address
         result = hmc.execute_cmd("lshwres -r virtualio --rsubtype eth --level lpar -m #{frame} -F mac_addr --filter \"lpar_names=#{name}\" ")
         return result.chomp
-    end
-    
+    end    
     
     #Set an LPAR profile's attribute, specifying the units to set the attribute to and the HMC label for the attribute
     def set_attr_profile(units,hmc_label)
@@ -177,7 +176,7 @@ class Lpar
         raise StandardError.new("Processing unit value is higher than the Maximum Processing Units specified for this LPAR") if units > max_proc_units
         
         #Set processing units on the Profile
-        set_proc_units_profile(units,"desired_proc_units")
+        set_attr_profile(units,"desired_proc_units")
         #Set processing units via DLPAR
         set_proc_units_dlpar(units)
         
@@ -197,7 +196,7 @@ class Lpar
         soft_shutdown
         
         #Wait until the LPAR isn't running anymore
-        sleep(5) until !is_running?
+        sleep(5) until check_state == "Not Activated"
         
         #Reactivate the LPAR using the same profile
         activate
