@@ -1,6 +1,6 @@
-# RemoteHmc
+﻿# RemoteHmc
 
-TODO: Write a gem description
+Virtual Infrastructure management of IBM pSeries/AIX
 
 ## Installation
 
@@ -16,9 +16,34 @@ Or install it yourself as:
 
     $ gem install remote_hmc
 
-## Usage
+## Class Descriptions/Usage
+### HMC
+#### Creating/Instantiating
+#### Connecting
+#### Usage
+#### Disconnecting
+### NIM
+#### Creating/Instantiating
+#### Creating/Deleting/listing NIM Objects
+#### Deploying a mksysb
+#### General usage
+### LPAR
+#### Creating/Instantiating
+#### Importing attributes
+#### Creating/Deleting LPARs
+#### Adding vSCSIs
+#### Adding vNICs
+#### Add/Remove Compute Resources
+#### Add/Remove Disks (also see VIO)
+### VIO
+#### Creating/Instantiating
+#### Important Attributes
+#### Using w/ LPAR objects
+#### Selecting disks in a VIO pair
+#### Mapping disks
+#### Unmapping disks
 
-TODO: Write usage instructions here
+
 
 ## Contributing
 
@@ -27,3 +52,4 @@ TODO: Write usage instructions here
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
+
