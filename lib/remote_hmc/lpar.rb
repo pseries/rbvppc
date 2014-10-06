@@ -612,11 +612,18 @@ class Lpar
         #chhwres -r virtualio -m "FrameName" -p VioName -o a --rsubtype scsi -s 11 -a "adapter_type=server,remote_lpar_name=ClientLPAR,remote_slot_num=5" 
     end
     
-    
+    #TODO: Function that lists Vscsis attached to the LPAR
+
+
+
     #####################################
     # vNIC functions
     #####################################
     
+    #TODO: Function that lists any/all vNICs attached to LPAR
+
+    #TODO: remove_vnic function
+
     #Create vNIC on LPAR
     def create_vnic(vlan_id,addl_vlan_ids = "")
         #default value for is_trunk = 0
@@ -647,6 +654,7 @@ class Lpar
             hmc.execute_cmd("chhwres -r virtualio -m #{frame} -o a -p #{name} --rsubtype eth -s #{slot_number} -a \"ieee_virtual_eth=0,port_vlan_id=#{vlan_id}\"")
         end
     end
+
     
     #####################################
     # Utility Functions

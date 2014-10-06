@@ -125,9 +125,17 @@ class Nim < ConnectableServer
    end
    
    #Deploy mksysb image to NIM client
-   def deploy_image(client_lpar, mksysb_name, spot_name, firstboot_script, lpp_source = nil)
+   def deploy_image(client_lpar, mksysb_name, firstboot_script, lpp_source = nil)
       
       bosinst_data_obj = client_lpar.name+"_bid"
+
+      #Get the SPOT to use for this image deployment
+      spot_name = get_spot(mksysb_name)
+      if spot_name.nil?
+         #Extract the spot from this mksysb and use it
+         spot_name = extract_spot(mksysb_name)
+      end
+
       #NIM command to start a remote mksysb install on NIM client
       execute_cmd "nim -o bos_inst -a source=mksysb -a mksysb=#{mksysb_name} -a bosinst_data=#{bosinst_data_obj} -a no_nim_client=no " +
                   "-a fb_script=#{firstboot_script} -a accept_licenses=yes -a spot=#{spot_name} -a boot_client=no #{client_lpar.name}"
@@ -156,7 +164,56 @@ class Nim < ConnectableServer
    def get_mksysb_location(mksysb_name)
       execute_cmd("lsnim -l #{mksysb_name} | awk '{if ($1 ~ /location/) print $3}'").chomp
    end
-   
+
+
+   #Returns the name of the SPOT extracted from the supplied mksysb
+   def get_spot(mksysb_name)
+      spot = execute_cmd("lsnim -l #{mksysb_name} | awk '{if ($1 ~ /extracted_spot/) print $3}'").chomp
+      if spot.empty?
+         return nil
+      else
+         return spot
+      end
+   end
+
+   #Extracts a SPOT from the mksysb image name specified.
+   #places the SPOT in a directory location adjacent to 
+   #where the mksysb resides
+   def extract_spot(mksysb_name)
+      #Find out if this mksysb exists on the NIM
+      if !list_nim_objtype("mksysb").include?(mksysb_name)
+         #Mksysb not found - error out?
+      end
+
+      spot_name = mksysb_name+"_spot"
+      #Find out if a SPOT already exists for this mksysb
+      #if so, just return that name.
+      temp_name = get_spot(mksysb_name)
+      if !temp_name.nil?
+         return temp_name
+      end
+
+      #Get the location of this mksysb
+      mksysb_loc = get_mksysb_location(mksysb_name)
+
+      #Make sure the mksysb location is non-null
+      raise StandardError.new("Cannot locate where the image #{mksysb_name} exists on this NIM") if mksysb_loc.nil?
+
+      #Make sure the SPOT location is a directory adjacent to where the mksysb was found
+      split_mksysb_path = mksysb_loc.split("/")
+      split_mksysb_path.pop
+      split_mksysb_path.pop
+      split_mksysb_path.push("spot")
+      split_mksysb_path.push(mksysb_name+"_spot")
+      spot_path = split_mksysb_path.join("/")
+
+      #Make a SPOT from this mksysb with the name <mksysb_name>_spot
+      execute_cmd("nim -o define -t spot -a server=master -a source=#{mksysb_name} -a location=#{spot_path} -a auto_expand=yes #{spot_name}")
+
+      #Return the name of the SPOT.
+      return spot_name
+   end   
+
    #Creates a bosinst_data object for the client_lpar specified
    def create_bid(client_lpar)
       if bid_exists?(client_lpar)
