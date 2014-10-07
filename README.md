@@ -49,6 +49,11 @@ Or install it yourself as:
 ##### command - the VIO command you wish to execute.
 ##### Example Usage
 ###### hmc.execute_vios_cmd(frame,vios,command)
+#### Version/Release:
+ call the .get_version and .get_release methods to get the version and release information of your hmc.
+#### Example usage
+##### hmc.get_version
+##### hmc.get_release
 ### NIM
 ### Creating/Instantiating
 ### Creating/Deleting/listing NIM Objects
