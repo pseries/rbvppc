@@ -16,35 +16,34 @@ Or install it yourself as:
 
     $ gem install remote_hmc
 
-=Class Descriptions/Usage=
-==HMC==
-# <big>Creating/Instantiating</big> - To create a new HMC object simply call the .new function with the following options.
-## Hostname/IP Address - Can be either the hostname or the ip address.
-## Username - It is required that the id have hscroot level authority to function correctly.
-## Options -
-### :password - needed if not using rsa keys.
-### :port - defaults to 22 if not specified.
-### :key - fully qualified location of the rsa public key.
-##Example usage
+#Class Descriptions/Usage
+##HMC
+### Creating/Instantiating- To create a new HMC object simply call the .new function with the following options.
+##### Hostname/IP Address - Can be either the hostname or the ip address.
+##### Username - It is required that the id have hscroot level authority to function correctly.
+##### Options -
+######:password - needed if not using rsa keys.
+###### :port - defaults to 22 if not specified.
+###### :key - fully qualified location of the rsa public key.
+####Example usage
 * hmc = Hmc.new("hmc.mydomain.com","hscroot",{:password => "password"})
-
-===Connecting===
-===Usage===
-===Disconnecting===
-==NIM==
-===Creating/Instantiating===
-===Creating/Deleting/listing NIM Objects===
-===Deploying a mksysb===
-===General usage===
-==LPAR==
-===Creating/Instantiating===
-===Importing attributes===
-===Creating/Deleting LPARs===
-===Adding vSCSIs===
-===Adding vNICs===
-===Add/Remove Compute Resources===
-===Add/Remove Disks (also see VIO)===
-==VIO==
+###Connecting
+###Usage
+###Disconnecting
+###NIM
+###Creating/Instantiating
+###Creating/Deleting/listing NIM Objects
+###Deploying a mksysb
+###General usage
+##LPAR
+###Creating/Instantiating
+###Importing attributes
+###Creating/Deleting LPARs
+###Adding vSCSIs
+###Adding vNICs
+###Add/Remove Compute Resources
+###Add/Remove Disks (also see VIO
+##VIO
 #### Creating/Instantiating
 #### Important Attributes
 #### Using w/ LPAR objects
