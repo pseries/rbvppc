@@ -129,6 +129,8 @@ class Nim < ConnectableServer
       
       bosinst_data_obj = client_lpar.name+"_bid"
 
+      #TODO: Do something if an lpp_source is specified.
+
       #Get the SPOT to use for this image deployment
       spot_name = get_spot(mksysb_name)
       if spot_name.nil?
@@ -139,8 +141,7 @@ class Nim < ConnectableServer
       #NIM command to start a remote mksysb install on NIM client
       execute_cmd "nim -o bos_inst -a source=mksysb -a mksysb=#{mksysb_name} -a bosinst_data=#{bosinst_data_obj} -a no_nim_client=no " +
                   "-a fb_script=#{firstboot_script} -a accept_licenses=yes -a spot=#{spot_name} -a boot_client=no #{client_lpar.name}"
-                  #"-a fb_script=#{firstboot_script} -a accept_licenses=yes -a spot=#{spot_name} -a boot_client=no #{client_lpar}"
-      
+                        
       
       #Then, in order to actually start the install the HMC needs to netboot the LPAR
       #Should that be called from here or just utilized separately from the HMC object?
@@ -151,7 +152,7 @@ class Nim < ConnectableServer
       gateway = get_network_gateway(network_name)
       subnetmask = get_network_subnetmask(network_name)
       
-      yield(client_lpar,gateway,subnetmask)
+      yield(gateway,subnetmask)
       
       until check_install_status(client_lpar).match(/ready for a NIM operation/i) do
          puts "Waiting for BOS install for #{client_lpar.name} to finish...."
@@ -179,6 +180,8 @@ class Nim < ConnectableServer
    #Extracts a SPOT from the mksysb image name specified.
    #places the SPOT in a directory location adjacent to 
    #where the mksysb resides
+   #If a spot already exists for this mksysb, it's name is
+   #simply returned.
    def extract_spot(mksysb_name)
       #Find out if this mksysb exists on the NIM
       if !list_nim_objtype("mksysb").include?(mksysb_name)
@@ -199,7 +202,9 @@ class Nim < ConnectableServer
       #Make sure the mksysb location is non-null
       raise StandardError.new("Cannot locate where the image #{mksysb_name} exists on this NIM") if mksysb_loc.nil?
 
-      #Make sure the SPOT location is a directory adjacent to where the mksysb was found
+      #Split the mksysb location on '/', pop the mksysb name and directory it resides
+      #in off of the array and push "spot" and the spot name onto the array to end up placing
+      #the SPOT in ../spot/spot_name
       split_mksysb_path = mksysb_loc.split("/")
       split_mksysb_path.pop
       split_mksysb_path.pop
@@ -212,7 +217,12 @@ class Nim < ConnectableServer
 
       #Return the name of the SPOT.
       return spot_name
-   end   
+   end
+
+   #Removes a SPOT object from a NIM based on the name
+   def remove_spot(spot_name)
+      execute_cmd("nim -Fo remove #{spot_name}")
+   end  
 
    #Creates a bosinst_data object for the client_lpar specified
    def create_bid(client_lpar)
