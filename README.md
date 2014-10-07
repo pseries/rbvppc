@@ -17,7 +17,7 @@ Or install it yourself as:
     $ gem install rbvhmc
 
 # Class Descriptions/Usage
-## HMC
+## <bold>HMC</bold>
 ### Creating/Instantiating- To create a new HMC object simply call the .new function with the following options.
 ##### Hostname/IP Address - Can be either the hostname or the ip address.
 ##### Username - It is required that the id have hscroot level authority to function correctly.
