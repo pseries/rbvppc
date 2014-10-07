@@ -31,15 +31,16 @@ Or install it yourself as:
 #### Example usage
 ##### hmc.connect
 ## Usage
-### Executing command - To execute a command against the hmc iteself simply call the .execute_cmd method
-#### Example usage
-##### hmc.execute_cmd("lshmc -V")
+### Executing command - To execute a command against the hmc call the .execute_cmd method with the following options.
+#### command - valid hmc command you wish to execute.
+##### Example usage
+###### hmc.execute_cmd("lshmc -V")
 ### Executing commands against VIOS via HMC - call the .execute_vios_cmd method with the following options.
 #### Frame - name of the hypervisor managed by your HMC. 
 #### VIO - name of the VIO lpar you with to execute command against.
 #### command - the VIO command you wish to execute.
-### Example Usage
-#### hmc.execute_vios_cmd("myFrame","myVIO", "VIO command")
+##### Example Usage
+###### hmc.execute_vios_cmd("myFrame","myVIO", "VIO command")
 ### Disconnecting - To close the connection to your hmc simply call the .disconnect method
 #### Example usage
 ##### hmc.disconnect
