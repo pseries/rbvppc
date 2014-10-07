@@ -22,11 +22,11 @@ Or install it yourself as:
 ##### Hostname/IP Address - Can be either the hostname or the ip address.
 ##### Username - It is required that the id have hscroot level authority to function correctly.
 ##### Options -
-##### :password - needed if not using rsa keys.
-##### :port - defaults to 22 if not specified.
-##### :key - fully qualified location of the rsa public key.
+###### :password - needed if not using rsa keys.
+###### :port - defaults to 22 if not specified.
+###### :key - fully qualified location of the rsa public key.
 #### Example usage
-* hmc = Hmc.new("hmc.mydomain.com","hscroot",{:password => "password"})
+##### hmc = Hmc.new("hmc.mydomain.com","hscroot",{:password => "password"})
 ### Connecting
 ### Usage
 ### Disconnecting
