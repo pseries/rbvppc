@@ -27,10 +27,13 @@ Or install it yourself as:
 ###### :key - fully qualified location of the rsa public key.
 #### <bold>Example usage</bold>
 ##### hmc = Hmc.new("hmc.mydomain.com","hscroot",{:password => "password"})
-### Connecting - To open a connection to your hmc simply call the .connect method 
-#### Example usage
-##### hmc.connect
 ### Usage
+#### Connecting - To open a connection to your hmc simply call the .connect method 
+##### Example usage
+###### hmc.connect
+#### Disconnecting - To close the connection to your hmc simply call the .disconnect method
+##### Example usage
+###### hmc.disconnect
 #### Executing command - To execute a command against the hmc call the .execute_cmd method with the following options.
 ##### command - valid hmc command you wish to execute.
 ##### Example usage
@@ -41,9 +44,6 @@ Or install it yourself as:
 ##### command - the VIO command you wish to execute.
 ##### Example Usage
 ###### hmc.execute_vios_cmd("myFrame","myVIO", "VIO command")
-### Disconnecting - To close the connection to your hmc simply call the .disconnect method
-#### Example usage
-##### hmc.disconnect
 ### NIM
 ### Creating/Instantiating
 ### Creating/Deleting/listing NIM Objects
