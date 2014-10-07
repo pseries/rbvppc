@@ -1,4 +1,4 @@
-﻿# RemoteHmc
+﻿# rbvppc
 
 Virtual Infrastructure management of IBM pSeries/AIX
 
@@ -6,7 +6,7 @@ Virtual Infrastructure management of IBM pSeries/AIX
 
 Add this line to your application's Gemfile:
 
-    gem 'remote_hmc'
+    gem 'rbvhmc'
 
 And then execute:
 
@@ -14,10 +14,10 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install remote_hmc
+    $ gem install rbvhmc
 
-#Class Descriptions/Usage
-##HMC
+# Class Descriptions/Usage
+## HMC
 ### Creating/Instantiating- To create a new HMC object simply call the .new function with the following options.
 ##### Hostname/IP Address - Can be either the hostname or the ip address.
 ##### Username - It is required that the id have hscroot level authority to function correctly.
