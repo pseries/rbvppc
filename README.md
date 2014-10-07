@@ -18,7 +18,7 @@ Or install it yourself as:
 
 # Class Descriptions/Usage
 ## <bold>HMC</bold>
-### Creating/Instantiating- To create a new HMC object simply call the .new function with the following options.
+### Creating/Instantiating- \nTo create a new HMC object simply call the .new function with the following options.
 ##### Hostname/IP Address - Can be either the hostname or the ip address.
 ##### Username - It is required that the id have hscroot level authority to function correctly.
 ##### Options -
@@ -27,7 +27,8 @@ Or install it yourself as:
 ###### :key - fully qualified location of the rsa public key.
 #### Example usage
 ##### hmc = Hmc.new("hmc.mydomain.com","hscroot",{:password => "password"})
-### Connecting
+### Connecting - To open a connection to your hmc simply call the .connect function 
+
 ### Usage
 ### Disconnecting
 ### NIM
