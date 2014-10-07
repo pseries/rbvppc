@@ -18,7 +18,8 @@ Or install it yourself as:
 
 # Class Descriptions/Usage
 ## <bold>HMC</bold>
-### Creating/Instantiating- To create a new HMC object simply call the .new method with the following options.
+### Creating/Instantiating-
+ To create a new HMC object simply call the .new method with the following options.
 ##### Hostname/IP Address - Can be either the hostname or the ip address.
 ##### Username - It is required that the id have hscroot level authority to method correctly.
 ##### Options -
@@ -26,7 +27,7 @@ Or install it yourself as:
 ###### :port - defaults to 22 if not specified.
 ###### :key - fully qualified location of the rsa public key.
 #### <bold>Example usage</bold>
-##### hmc = Hmc.new("hmc.mydomain.com","hscroot",{:password => "password"})
+##### hmc = Hmc.new(hostname,user,{:password => "password"})
 ### Usage
 #### Connecting - To open a connection to your hmc simply call the .connect method 
 ##### Example usage
@@ -37,13 +38,13 @@ Or install it yourself as:
 #### Executing command - To execute a command against the hmc call the .execute_cmd method with the following options.
 ##### command - valid hmc command you wish to execute.
 ##### Example usage
-###### hmc.execute_cmd("lshmc -V")
+###### hmc.execute_cmd(command)
 #### Executing commands against VIOS via HMC - call the .execute_vios_cmd method with the following options.
 ##### Frame - name of the hypervisor managed by your HMC. 
 ##### VIO - name of the VIO lpar you with to execute command against.
 ##### command - the VIO command you wish to execute.
 ##### Example Usage
-###### hmc.execute_vios_cmd("myFrame","myVIO", "VIO command")
+###### hmc.execute_vios_cmd(frame,vios,command)
 ### NIM
 ### Creating/Instantiating
 ### Creating/Deleting/listing NIM Objects
