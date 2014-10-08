@@ -86,6 +86,7 @@ class Lpar
         #TO-DO: Remove all of the LPAR's disks/vSCSIs before deleting
         #Do a hard shutdown and then remove the LPAR definition
         hard_shutdown
+        sleep(10) until not_activated?
         hmc.execute_cmd "rmsyscfg -r lpar -m #{frame} -n #{name}"
     end
     
