@@ -1,3 +1,3 @@
-module RemoteHmc
-  VERSION = "1.0"
+module Rbvppc
+  VERSION = "1.0.0"
 end
