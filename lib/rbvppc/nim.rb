@@ -1,5 +1,3 @@
-require_relative 'connectable_server'
-
 =begin
 
 Assumptions:
@@ -13,6 +11,8 @@ TO-DO:
  citing client_lpar.name instead of just client_lpar. Use these lines when we convert the functions
  to use LPAR obects and not just pass names.
 =end
+
+require_relative 'connectable_server'
 
 class Nim < ConnectableServer
 
@@ -35,10 +35,10 @@ class Nim < ConnectableServer
    end
     
    #list all defined objects of a specific type
-   #acceptable types are (standalone,ent,lpp_source,mksysb,spot,fb_script,script)
+   #acceptable types are (standalone,ent,lpp_source,mksysb,spot,fb_script,script,bosinst_data,ent)
    def list_nim_objtype(type)
       case type
-      when "standalone","ent","lpp_source","mksysb","spot","fb_script","script","bosinst_data"
+      when "standalone","ent","lpp_source","mksysb","spot","fb_script","script","bosinst_data","ent"
          output = execute_cmd "lsnim -t #{type}"
       else
          raise StandardError.new("Unknown type of NIM Object passed")
@@ -321,9 +321,50 @@ class Nim < ConnectableServer
       end
    end
    
-   #Add a NIM network object
-   def add_network
-      
+   #Add a NIM network object using the given name, network address,
+   #subnet mask, gateway
+   def add_network(network_name,network_addr,snm,gw)
+      #Ensure that network with this address doesn't already exist
+      raise StandardError.new("Network #{network_name} already exists on this NIM") if network_exists?(network_name,network_addr)
+
+      #Execute NIM command to create the network
+      #It is assumed that the network addess and the gateway are the same
+      execute_cmd("nim -o define -t ent -a net_addr=#{network_addr} -a snm=#{snm} #{network_name}")
+
+      #Add default route to the specified gateway
+      add_default_route(network_name,gw)
    end
-   
+
+   #Remove a NIM network given it's name and/or it's
+   #network address
+   def remove_network(network_name,network_addr=nil)
+      #Ensure that the network to remove is actually defined currently
+      raise StandardError.new("Network #{network_name} does not exist on this NIM to be removed") if !network_exists?(network_name,network_addr)
+      
+      #Run command that removes this network from the NIM      
+      execute_cmd("nim -Fo remove #{network_name}")
+   end
+
+   #Returns true if a network object exists on the NIM
+   #with either the specified name or network address.
+   #Returns false otherwise.
+   def network_exists?(network_name,network_addr=nil)
+      network_names = list_nim_objtype("ent")
+      if network_names.include?(network_name)
+         return true
+      end
+      network_names.each do |net_name|
+         address = execute_cmd("lsnim -l #{net_name} | awk '{if ($1 ~ /net_addr/) print $3}'").chomp
+         if address == network_addr
+            return true
+         end
+      end
+
+      return false
+   end
+
+   def add_default_route(network_name,gateway)
+      #TODO: Add more robust creation/management of NIM network routes, if necessary      
+      execute_cmd("nim -o change -a routing1='default #{gateway}' #{network_name}")
+   end
 end
