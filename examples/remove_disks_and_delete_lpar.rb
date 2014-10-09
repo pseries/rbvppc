@@ -2,13 +2,15 @@ require_relative '../lib/rbvppc/hmc'
 require_relative '../lib/rbvppc/lpar'
 require_relative '../lib/rbvppc/vio'
 
-frame_name = "frame"
-lpar_name  = "lpar"
-vio1_name  = "vio1"
-vio2_name  = "vio2"
+frame_name = "rslppc09"
+lpar_name  = "rslpl003"
+vio1_name  = "rslppc09a"
+vio2_name  = "rslppc09b"
+hmc_fqdn    = "dwinhmc.dub.usoh.ibm.com"
+hmc_pass    = "ibm4darwin"
 
 #Create HMC Object
-hmc = Hmc.new("FQDN", "hscroot", {:password => "password goes here"})
+hmc = Hmc.new(hmc_fqdn, "hscroot", {:password => hmc_pass})
 #Connect to HMC
 hmc.connect
 #Populate options hash with lpar information

@@ -78,8 +78,8 @@ lpar_vscsi = lpar.get_vscsi_adapters
 ```
 Then we need to find each vHost, and map a disk to the lpar
 ```sh
-first_vhost = lpar.find_vhost_given_virtual_slot(lpar_vscsi[0].remote_slot_num)
-second_vhost = lpar.find_vhost_given_virtual_slot(lpar_vscsi[1].remote_slot_num)
+first_vhost = vio1.find_vhost_given_virtual_slot(lpar_vscsi[0].remote_slot_num)
+second_vhost = vio2.find_vhost_given_virtual_slot(lpar_vscsi[1].remote_slot_num)
 vio1.map_any_disk(first_vhost, vio2, second_vhost)
 ```
 ### Power Cycle the LPAR
@@ -125,8 +125,8 @@ lpar.add_vscsi(vio1)
 lpar.add_vscsi(vio2)
 lpar.create_vnic('<VLAN ID>')
 lpar_vscsi = lpar.get_vscsi_adapters
-first_vhost = lpar.find_vhost_given_virtual_slot(lpar_vscsi[0].remote_slot_num)
-second_vhost = lpar.find_vhost_given_virtual_slot(lpar_vscsi[1].remote_slot_num)
+first_vhost = vio1.find_vhost_given_virtual_slot(lpar_vscsi[0].remote_slot_num)
+second_vhost = vio2.find_vhost_given_virtual_slot(lpar_vscsi[1].remote_slot_num)
 vio1.map_any_disk(first_vhost, vio2, second_vhost)
 lpar.activate
 lpar.soft_shutdown

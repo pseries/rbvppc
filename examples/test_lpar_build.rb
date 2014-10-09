@@ -1,167 +1,74 @@
-=begin
-Creating the LPAR: (HMC)
-    specify min, max, desired values for Processing Units, Memory, and vCPUs
-    Command : mksyscfg -r lpar -m "rslppc03" -i "name=dwin006,
-                                                 profile_name=dwin006_prof,
-                                                 boot_mode=norm,
-                                                 auto_start=0,
-                                                 lpar_env=aixlinux,
-                                                 max_virtual_slots=30,
-                                                 desired_mem=1024,
-                                                 min_mem=1024,
-                                                 max_mem=1024,
-                                                 desired_procs=1,
-                                                 min_procs=1,
-                                                 max_procs=1,
-                                                 proc_mode=shared,
-                                                 sharing_mode=uncap,
-                                                 desired_proc_units=1.0,
-                                                 max_proc_units=1.00,
-                                                 min_proc_units=1.00,
-                                                 uncap_weight=1,
-                                                 \"virtual_eth_adapters=2/1/73//0/1\"" 
-                                                 
-Activate the LPAR initially:  (HMC)
-    turn on LPAR and allow the HMC to allocate vCPU,Memory, and Processing Units to the LPAR
-    Command : chsysstate -r lpar -m #FRAME -o on -n #LPAR  -f Profile_ name
-    
-Create Virtual Ethernet Adapter: (HMC possibly VIOS)
-	can be done as a part of the initial LPAR creation
-	either:
-		i) Create a vNIC(object) via the HMC and attach to correct VLAN
-		ii) Create vNIC on correct VLAN and attach to client LPAR via Network VIOs (?)
-	
-Create 2 vSCSI Adapters:
-	i) Find unused adapter slot for both the client LPAR and the Primary VIO
-	ii) Add vSCSI adapter to the client's LPAR profile, using the unused client and server (VIO) adapter slots
-	    Command: chsyscfg -m #FRAME -r prof -i 'name=server_name,
-	                                            lpar_id=xx,
-	                                            "virtual_scsi_adapters=301/client/4/vio01_server/301/0,303/client/4/vio02/303/0,305/client/4/vio01_server/305/0,307/client/4/vio02_server/307/0"'
-	iii) Run DLPAR command(s) to create that same exact vSCSI adapter in real time
-	iv) Repeat (i)-(iii), creating an adapter that is mapped to the Secondary VIO
-	
-Assign rootvg disk to LPAR:  (VIOS via HMC)
-	i) Find disk that is both unused and satisfies any size requirements of rootvg
-	ii) Find vhost that is associated with the vSCSI created previously, which attaches to the client LPAR
-	iii) Create a new Virtual Target Device (VTD) underneath this vhost which maps to the hdisk identified in (i)
-	iv) Using either the S/N or PVID of the disk selected in (i), identify this same disk on the Secondary VIO
-	v) Find vhost that is associated with the vSCSI created previously, which attaches the Secondary VIO to the client LPAR
-	vi) Create a new VTD underneath this vhost which maps to the hdisk identified in (iv)
+require_relative '../lib/rbvppc/hmc'
+require_relative '../lib/rbvppc/nim'
+require_relative '../lib/rbvppc/lpar'
+require_relative '../lib/rbvppc/vio'
 
-Install Base OS: (NIM)
-	i) Connect to NIM that will build this LPAR's OS:
-		a) Create NIM client representing this client LPAR
-		b) Create NIM Base OS Install Data (bosinst_data) object specifying build attributes
-		c) Check (or create) NIM network in which the client LPAR will reside
-		d) Initiate a remote mksysb push to the NIM client
-	ii) LPAR Netboot the client LPAR from the HMC so that it receives the remote mksysb push
-	iii) Monitor the status of the mksysb deploy by checking the NIM client's status
 
-Attach non-rootvg disks to LPAR: (VIOS via HMC)
-	i) For every extra volume group specified:
-			a) For every disk needed to satisfy the space required for this volume group:
-				1) Assign a disk to the LPAR in a fashion similar to how rootvg's disk was assigned.
-			b) Create a Volume Group for all the disks added in (a)
-			
+#Modify these for your tests
+hmc_fqdn    = "dwinhmc.dub.usoh.ibm.com"
+nim_fqdn    = "dwinnim.dub.usoh.ibm.com"
+frame_name  = "rslppc09"
+lpar_name   = "rslpl003"
+vio1_name   = "rslppc09a"
+vio2_name   = "rslppc09b"
+vlan_id     = "74"
+des_prod    = "1.0"
+des_mem     = "4096"
+des_vcpu    = "1"
+nim_ip      = "9.55.50.248"
+rslpl003_ip = "9.55.51.131"
+fb_script   = "Darwin_TPM72_Key_fb_Script"
+mksysb      = "ic2-aix-7100-02-04-1341-20140807"
 
-Create FSes, Users, Groups, etc: (LPAR? OS?)
-	Chef client handles these
-  
- 
-=end
+hmc_pass    = "ibm4darwin"
+nim_pass    = "ibm4darwin"
 
-require_relative 'hmc'
-require_relative 'nim'
-require_relative 'lpar'
-require_relative 'automation_request'
 
-class TestLparBuild
-    
-    vios_array = [vio1, vio2]
-    hmc_ip = '1.2.3.4'
-    hmc_user = 'hscroot'
-    hmc_password = 'password'
-    lpar_hash = {:frame              => 'rslppc09',
-                 :name               => 'pRuby',
-                 :profile_name       => 'pRuby',
-                 :max_virtual_slots  => '30',
-                 :desired_mem        => '1024',
-                 :min_mem            => '1024',
-                 :max_mem            => '1024',
-                 :desired_procs      => '1',
-                 :min_procs          => '1',
-                 :max_procs          => '1',
-                 :proc_mode          => 'shared',
-                 :sharing_mode       => 'uncap',
-                 :desired_proc_units => '1.0',
-                 :max_proc_units     => '1.0',
-                 :min_proc_units     => '1.0',
-                 :uncap_weight       => '1'}
 
-                 
-    nim_ip = '1.2.3.4'
-    nim_user = 'root'
-    nim_password = 'password'
-    
-def build_lpar(options)
-        #initialize hmc object and open a connection to hmc
-        hmc = Hmc.new(hmc_ip, hmc_user , {:password => hmc_password}) 
-        hmc.connect
-        
-        #create the lpar 
-        hmc.create_lpar(lpar_hash)
-        
-        #add virtual ethernet adapter to lpar                          #no method yet
-        #hmc.create_vnic(lpar)
-                 
-        #add a vscsi adapter to each of the storage vios
-        first_vscsi_vios = hmc.add_vscsi(lpar_hash[:frame],lpar_hash[:name],vios_array[0])
-        second_vscsi_vios = hmc.add_vscsi(lpar_hash[:frame],lpar_hash[:name], vios_array[1])
-           
-        #find vhost given slot
-        first_vios_vhost = hmc.find_vhost_given_virtual_slot(lpar_hash[:frame],vios_array[0],first_vscsi_vios[1])
-        second_vios_vhost = hmc.find_vhost_given_virtual_slot(lpar_hash[:frame],vios_array[0],second_vscsi_vios[1])
-        
-        #select any available disk
-        available_disk = hmc.select_any_avail_disk(lpar_hash[:frame], vios_array[0], vios_array[1])
-        
-        #assign disk to vhost
-        hmc.assign_disk_vhost(lpar_hash[:frame],vios_array[0], available_disk, "hutch_vtd", first_vios_vhost)
-        hmc.assign_disk_vhost(lpar_hash[:frame],vios_array[1], available_disk, "hutch_vtd", second_vios_vhost)
-        
-        #activate the lpar (power on)
-        hmc.activate_lpar(lpar)
-        
-        #disconnect from hmc
-        hmc.disconnect
-        
-=begin        
-        nim = Nim.new(nim_ip, nim_user, {:password => nim_password})
-        nim.define_client(lpar)
-        nim.deploy_image(lpar) #Will Lpar have what image it uses?      #no method yet
-        hmc.lpar_net_boot(lpar)                                         #no method yet
-        nim.check_install_status(lpar)  
-        
-         unless nim.check_install_status(lpar) == "CstateSuccess" #Find the actual status message
-            puts "installing mysksyb"
-         else
-            puts "mksysb deployed"   #remember to check for other than installing and success. 
-         end
-         
-         #power down?
-         disks_on_vio1[] = hmc.find_disk(vio1)         #no method yet
-         disks_on_vio2[] = hmc.find_disk(vio2)         #no method yet
-         #Do we make another vHost?
+#Create objects        
+hmc = Hmc.new(hmc_fqdn,"hscroot", {:password => hmc_pass})
+nim = Nim.new(nim_fqdn,"root", {:password => nim_pass})
+vio1 = Vio.new(hmc,frame_name,vio1_name)
+vio2 = Vio.new(hmc,frame_name,vio2_name)
+lpar = Lpar.new({:hmc => hmc, :des_proc => des_prod, :des_mem => des_mem , :des_vcpu => des_vcpu, :frame => frame_name, :name => lpar_name})
 
-         Attach non-rootvg disks to LPAR: (VIOS via HMC)
-     	i) For every extra volume group specified:
-			a) For every disk needed to satisfy the space required for this volume group:
-				1) Assign a disk to the LPAR in a fashion similar to how rootvg's disk was assigned.
-			b) Create a Volume Group for all the disks added in (a)
-=end
-        
-        
-        
+#Open connections
+hmc.connect
+nim.connect
+
+#Create LPAR
+lpar.create
+
+#Add vSCSI Adapters
+lpar.add_vscsi(vio1)
+lpar.add_vscsi(vio2)
+
+#Create vNIC
+lpar.create_vnic(vlan_id)
+
+#Get vSCSI Information
+lpar_vscsi = lpar.get_vscsi_adapters
+
+#Find the vHosts
+first_vhost = lpar.find_vhost_given_virtual_slot(lpar_vscsi[0].remote_slot_num)
+second_vhost = lpar.find_vhost_given_virtual_slot(lpar_vscsi[1].remote_slot_num)
+
+#Attach a Disk
+vio1.map_any_disk(first_vhost, vio2, second_vhost)
+
+#Power Cycle the LPAR to assign MAC to vNIC
+lpar.activate
+lpar.soft_shutdown
+
+#Define needed NIM objects
+nim.define_client(lpar)
+nim.create_bid(lpar)
+
+#Deploy Mksysb, booting LPAR
+nim.deploy_image(lpar,mksysb,fb_script) do |gw,snm| 
+   hmc.lpar_net_boot(nim_ip, rslpl003_ip,gw,snm,lpar.name,lpar.current_profile,lpar.frame)
 end
-    
-end
+
+#Close connections
+nim.disconnect
+hmc.disconnect
