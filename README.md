@@ -6,7 +6,7 @@ Virtual Infrastructure management of IBM pSeries/AIX
 
 Add this line to your application's Gemfile:
 
-    gem 'rbppc'
+    gem 'rbvppc'
 
 And then execute:
 
@@ -14,7 +14,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install rbppc
+    $ gem install rbvppc
 ## Example end to end build in irb
 In this example we will take you through the steps needed to create a new lpar on a pSeries hypervisor, and execute a network build of the AIX Operating System.
 ### Load required classes in your irb.
