@@ -64,8 +64,6 @@ class Nim < ConnectableServer
    
    #Define the NIM Client
    def define_client(client_lpar)
-      #Call to TPM's define client script:
-      #/tmp/nim_define_client_g01acxwas082.sh tio_name=g01acxwas082 ipaddr=9.57.170.114 ifname=en1 macaddr=82B1F2593C03 nic_speed=auto nic_duplex=auto nim_service=shell netboot_kernel=64 nim_name=
       if client_defined?(client_lpar)
          remove_client(client_lpar)
       end
