@@ -15,8 +15,8 @@ And then execute:
 Or install it yourself as:
 
     $ gem install rbppc
-
 ## Example End to End build in irb
+In this example we will take you through the steps needed to create a new lpar on a pSeries hypervisor, and execute a network build of the AIX Operating System.
 ```sh
 load 'lpar.rb'
 load 'hmc.rb'
