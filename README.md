@@ -18,10 +18,7 @@ Or install it yourself as:
 ## Example end to end build in irb
 In this example we will take you through the steps needed to create a new lpar on a pSeries hypervisor, and execute a network build of the AIX Operating System.
 ### Load required classes in your irb.
-	- Lpar
-	- Hmc
-	- Nim
-	- Vio
+You will need to load the following classes to execute this example
 ```sh
 load 'lpar.rb'
 load 'hmc.rb'
