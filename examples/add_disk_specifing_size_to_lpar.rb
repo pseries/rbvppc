@@ -7,7 +7,7 @@ lpar_name  = "rslpl003"
 vio1_name  = "rslppc09a"
 vio2_name  = "rslppc09b"
 hmc_fqdn    = "dwinhmc.dub.usoh.ibm.com"
-hmc_pass    = "ibm4darwin"
+hmc_pass    = ""
 total_size_in_gb = 30
 
 #Create HMC Object

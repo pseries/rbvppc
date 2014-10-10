@@ -20,8 +20,8 @@ rslpl003_ip = "9.55.51.131"
 fb_script   = "Darwin_TPM72_Key_fb_Script"
 mksysb      = "ic2-aix-7100-02-04-1341-20140807"
 
-hmc_pass    = "ibm4darwin"
-nim_pass    = "ibm4darwin"
+hmc_pass    = ""
+nim_pass    = ""
 
 
 
