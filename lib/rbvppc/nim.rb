@@ -23,22 +23,12 @@ class Nim < ConnectableServer
        puts "#{command}"
        super "#{command}"
    end  
-  
-   #list mksysb
-   def list_images
-      execute_cmd "lsnim -t mksysb"
-   end
-   
-   #list all defined NIM objects
-   def list_all_NIM_objects
-       execute_cmd "lsnim"
-   end
-    
+         
    #list all defined objects of a specific type
    #acceptable types are (standalone,ent,lpp_source,mksysb,spot,fb_script,script,bosinst_data,ent)
-   def list_nim_objtype(type)
+   def list_objtype(type)
       case type
-      when "standalone","ent","lpp_source","mksysb","spot","fb_script","script","bosinst_data","ent"
+      when "standalone","ent","lpp_source","mksysb","spot","fb_script","script","bosinst_data"
          output = execute_cmd "lsnim -t #{type}"
       else
          raise StandardError.new("Unknown type of NIM Object passed")
@@ -110,24 +100,68 @@ class Nim < ConnectableServer
       end
       return nil
    end
-    
+
+   #Return an array of names of mksysbs that exist on this NIM
+   def list_images
+      list_objtype("mksysb")
+   end
+
    #Capture a mksysb image from a NIM client
-   def capture_image(source_lpar)
+   def capture_image(source_lpar,mksysb_name,path)
       #Pull mksysb from a NIM client, give it a name and place it in some location on the NIM
-      execute_cmd "nim -o define -t mksysb -F -a server=master -a location=/mksysb/goes/here -a source=#{source_lpar.name} -a mk_image=yes -a mksysb_flags=XAe mksysbName"
-      #execute_cmd "nim -o define -t mksysb -F -a server=master -a location=/mksysb/goes/here -a source=#{source_lpar} -a mk_image=yes -a mksysb_flags=XAe mksysbName"
-      
+      execute_cmd "nim -o define -t mksysb -F -a server=master -a location=#{path} -a source=#{source_lpar.name} -a mk_image=yes -a mksysb_flags=XAe #{mksysb_name}"
+            
       #Create SPOT resource from this mksysb, giving it a name and a location on the NIM to store it
-      execute_cmd "nim -o define -t spot -a server=master -a source=mksysbName -a location=/spot/goes/here -a auto_expand=yes spotName"
-      
+      extract_spot(mksysb_name)     
    end
    
+   #Add a mksysb image to this NIM based on the name given and
+   #the local file path of the mksysb file on the NIM.
+   #Returns the name of the image that is created.
+   def add_image(file_path,mksysb_name)
+      #Check to make sure a mksysb with this name doesn't already exist
+      images = list_images
+      if images.include?(mksysb_name)
+         raise StandardError.new("A mksysb with the specified name #{mksysb_name} already exists, please specify another name")
+      end
+
+      #Add image to the NIM
+      execute_cmd "nim -o define -t mksysb -F -a server=master -a location=#{file_path} -a mksysb_flags=XAe #{mksysb_name}"
+
+      #Extract a SPOT from this mksysb
+      extract_spot(mksysb_name)
+
+      return mksysb_name
+   end
+
+   #Removes a mksysb from the NIM that identifies with the name specified.
+   #Attempts to remove the SPOT that was extracted from this mksysb first.
+   def remove_image(mksysb_name)
+      #Find if this mksysb actually exists on the NIM
+      images = list_images
+      if !images.include?(mksysb_name)
+         warn "#{mksysb_name} does not exist on this NIM."
+         return
+      end
+
+      #Find and remove the SPOT for this mksysb
+      spot_name = get_spot(mksysb_name)
+      if !spot_name.nil?
+         remove_spot(spot_name)
+      end
+
+      #Remove the mksysb from the NIM (along with it's mksysb file)
+      execute_cmd("nim -o remove -a rm_image=yes #{mksysb_name}")
+   end
+
    #Deploy mksysb image to NIM client
-   def deploy_image(client_lpar, mksysb_name, firstboot_script, lpp_source = nil)
+   def deploy_image(client_lpar, mksysb_name, firstboot_script = nil, lpp_source = nil)
       
       bosinst_data_obj = client_lpar.name+"_bid"
-
-      #TODO: Do something if an lpp_source is specified.
+      
+      if !lpp_source.nil?
+         #TODO: Do something different if an lpp_source is specified...
+      end
 
       #Get the SPOT to use for this image deployment
       spot_name = get_spot(mksysb_name)
@@ -136,10 +170,14 @@ class Nim < ConnectableServer
          spot_name = extract_spot(mksysb_name)
       end
 
+      command = "nim -o bos_inst -a source=mksysb -a mksysb=#{mksysb_name} -a bosinst_data=#{bosinst_data_obj} -a no_nim_client=no " +
+                "-a accept_licenses=yes -a boot_client=no"
+      command += " -a spot=#{spot_name}" if !spot_name.nil?
+      command += " -a fb_script=#{firstboot_script}" if !firstboot_script.nil?
+      command += " -a lpp_source=#{lpp_source}" if !lpp_source.nil?
+      command += " #{client_lpar.name}"
       #NIM command to start a remote mksysb install on NIM client
-      execute_cmd "nim -o bos_inst -a source=mksysb -a mksysb=#{mksysb_name} -a bosinst_data=#{bosinst_data_obj} -a no_nim_client=no " +
-                  "-a fb_script=#{firstboot_script} -a accept_licenses=yes -a spot=#{spot_name} -a boot_client=no #{client_lpar.name}"
-                        
+      execute_cmd(command)                        
       
       #Then, in order to actually start the install the HMC needs to netboot the LPAR
       #Should that be called from here or just utilized separately from the HMC object?
@@ -158,7 +196,7 @@ class Nim < ConnectableServer
       end
       
    end
-   
+
    #Returns the filesystem location of the mksysb with the specified name
    def get_mksysb_location(mksysb_name)
       execute_cmd("lsnim -l #{mksysb_name} | awk '{if ($1 ~ /location/) print $3}'").chomp
@@ -182,7 +220,7 @@ class Nim < ConnectableServer
    #simply returned.
    def extract_spot(mksysb_name)
       #Find out if this mksysb exists on the NIM
-      if !list_nim_objtype("mksysb").include?(mksysb_name)
+      if !list_objtype("mksysb").include?(mksysb_name)
          #Mksysb not found - error out?
       end
 
@@ -269,9 +307,9 @@ class Nim < ConnectableServer
    
    #Checks if BID object exists on NIM for the Client LPAR
    def bid_exists?(client_lpar)
-      defined_bids = list_nim_objtype("bosinst_data")
+      defined_bids = list_objtype("bosinst_data")
       defined_bids.each do |obj_name|
-         #Iterate through array elements returned by list_nim_objtype
+         #Iterate through array elements returned by list_objtype
          #and check if any of them line up with the BID name for our LPAR
          if (obj_name == "#{client_lpar.name}_bid")
          #if (obj_name == "#{client_lpar}_bid")
@@ -347,7 +385,7 @@ class Nim < ConnectableServer
    #with either the specified name or network address.
    #Returns false otherwise.
    def network_exists?(network_name,network_addr=nil)
-      network_names = list_nim_objtype("ent")
+      network_names = list_objtype("ent")
       if network_names.include?(network_name)
          return true
       end
