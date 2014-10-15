@@ -4,7 +4,7 @@ class Lun
         @name = name
         #@serial_number = serial_number
         @pvid = pvid
-        @size_in_mb = size_in_mb
+        @size_in_mb = size_in_mb.to_i
     end
     
     
