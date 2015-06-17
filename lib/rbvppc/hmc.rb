@@ -10,7 +10,7 @@ class Hmc < ConnectableServer
    
    #Execute commands on HMC setting language to US English
    def execute_cmd(command)
-       puts "export LANG=en_US.UTF-8;#{command}"
+       puts "export LANG=en_US.UTF-8;#{command}" if debug
        super "export LANG=en_US.UTF-8;#{command}"
    end
    
@@ -33,63 +33,161 @@ class Hmc < ConnectableServer
    def get_release
        execute_cmd("lshmc -V | grep 'Release:'|cut -d':' -f2").chomp
    end
-
-   #Inject RSA public key
-   def add_public_key(rsa_key, user, host)
-       execute_cmd("mkauthkeys -a 'ssh-rsa #{rsa_key} #{user}@#{host}'")
-   end
-
-   #Remove RSA public key
-   def remove_public_key(rsa_key, user, host)
-       execute_cmd("mkauthkeys -r 'ssh-rsa #{rsa_key} #{user}@#{host}'")
-   end
-
-   #Remove Specific user's RSA public keys
-   def remove_users_public_key_with_host(user,host)
-        execute_cmd("mkauthkeys -r #{user}@#{host}")
-   end
-
-   #Remove All of authorized SSH keys for user
-   def remove_users_public_key_with_host(user)
-        execute_cmd("mkauthkeys -r -u #{user}")
-   end
    
    #List the Frames managed by HMC
-   def get_managed_systems
+   def list_frames
        out_array = []
        result = execute_cmd "lssyscfg -r sys -F name"
-       for x in result.split("\n")
+       result.each_line do |x|
+         x.chomp!
          out_array.push(x)
        end      
-       	
+       #Return the output array
+       return out_array	
    end
-  
-   #List LPARs on a frame
-   def list_lpars_on_frame(frame)
-       result = execute_cmd "lssyscfg -r prof -m #{frame} | cut -d, -f1,2"
-       lpar_arr = result.split('lpar_name=')
-       return lpar_arr[1]
-   end
+
+  #List LPARs on a frame
+  def list_lpars_on_frame(frame)
+    result = execute_cmd "lssyscfg -r prof -m #{frame} -F lpar_name"
+    lpar_arr = []
+    result.each_line do |line|
+      line.chomp!
+      lpar_arr.push(line)
+    end
+    return lpar_arr
+  end
    
+
+  #List VLANs on a frame
+  def list_vlans_on_frame(frame)
+    vlans =[]
+    result = execute_cmd "lshwres -r virtualio --rsubtype vswitch -m #{frame} -F"
+    result.each_line do |line|
+      line = line.chomp!
+      line = line.delete "\""
+      line_arr = line.split(',')
+      line_arr.each do |field|
+        vlans.push(field.to_str) if field.numeric?
+      end
+
+    end
+
+    return vlans
+  end  
+  
+  #List VIOS on a frame
+  def list_vios_on_frame(frame)
+  	vios = []
+  	result = exectue_cmd "lssyscfg -r lpar -m #{frame} -F name,lpar_env | grep vioserver"
+  	result.each_line do |line|
+  		line = line.chomp!
+  		line_arr = line.split(',')
+  		line_arr.each do |field|
+  			if field == "vioserver"
+  				#We don't want to see "vioserver" in the array only the actual vios names
+  		    else
+				vios.push(field)
+			end
+		end
+  	end
+  			
+	return vios
+  end
+
+  #Get Frame info- type,model,serial number
+  def get_frame_specs(frame)
+   	info = execute_cmd("lssyscfg -r sys -m #{frame}")
+	attributes = info.chomp.split(",")
+	frame_hash = {}
+	attributes.each do |line|
+		att,val = line.split("=")
+		case att
+		when "name"
+			frame_hash[:name]=val
+		when "type_model"
+			frame_hash[:type_model]=val
+		when "serial_num"
+			frame_hash[:serial_num]=val
+		end
+	end
+		
+	return frame_hash
+  end
+	
+  #Get Frame info - CPU/vCPU data
+  def get_frame_cpu(frame)
+    info = execute_cmd("lshwres -r proc -m #{frame} --level sys")
+    attributes = info.chomp.split(",")
+    frame_hash = {}
+    attributes.each do |line|
+    	att,val = line.split("=")
+    	frame_hash[att.to_sym]=val
+    end
+    
+    return frame_hash
+  end
+  
+  #Get Frame info - Memory Data
+  def get_frame_mem(frame)
+    info = execute_cmd("lshwres -r mem -m #{frame} --level sys")
+    #Remove Substrings that are surrounded by double quotes
+    quoted_substrings = info.chomp.match(/"[^"]+"/)
+    info.gsub!(/"[^"]+"/, "")
+        
+   	#Handle strings that are not quoted
+    attributes = info.chomp.split(",")
+    frame_hash = {}
+    attributes.each do |line|
+   	  att,val = line.split("=")
+      frame_hash[att.to_sym]=val
+    end
+ 	
+   	#Find used memory by subtracting available from total
+    used_mem = frame_hash[:configurable_sys_mem].to_i - frame_hash[:curr_avail_sys_mem].to_i
+    frame_hash[:used_mem]=used_mem.to_s
+	
+   	#Handle strings that are quoted checking for more than one
+    quoted_substrings = quoted_substrings.to_s
+    #match on "," 
+   	unless quoted_substrings.match(/\"(.*)\",\"(.*)\"/)
+      substring = quoted_substrings.to_s.chomp.split("=")
+      substring.each do |line|
+	      line.gsub!("\"","")
+      end
+      temp_str = substring[1]
+      ratios = temp_str.split(',')
+      frame_hash[:"#{substring[0]}"]=ratios
+	else
+      quoted = quoted_substrings.chomp.split('","')
+      quoted.each do |line|
+        line.gsub!("\"","")
+	    att,val = line.split('=')
+        ratios = val.split(',')
+        frame_hash[att.to_sym]=ratios
+      end
+    end
+               
+    return frame_hash
+  end
+	
    #Get the Current Profile of an LPAR
-   def get_lpar_curr_profile(frame, lpar)
-    curr_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter lpar_names=#{lpar} -F curr_profile"
+   def get_lpar_curr_profile(frame, lpar, filter = "lpar_name")
+     curr_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter #{filter}s=#{lpar} -F curr_profile"
     return curr_prof.chomp
-   end
+    end
    
    #Get the Default Profile of an LPAR
-   def get_lpar_def_profile(frame, lpar)
-    def_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter lpar_names=#{lpar} -F default_profile"
+   def get_lpar_def_profile(frame, lpar, filter = "lpar_name")
+     def_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter #{filter}s=#{lpar} -F default_profile"
     return def_prof.chomp
    end
    
     #Get the general attributes of an lpar by specifying 
     #the frame and lpar names as Strings. Returns an options 
     #hash representing that LPAR
-    def get_lpar_options(frame, lpar)
-        
-        profile_name = get_lpar_curr_profile(frame,lpar)
-        info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\',lpar_names=\'#{lpar}\' "
+    def get_lpar_options(frame, lpar, filter = "lpar_name")
+      profile_name = get_lpar_curr_profile(frame, lpar, filter)
+      info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\',lpar_names=\'#{lpar}\' "
                     #"-F name,lpar_name,lpar_id,min_mem,desired_mem,max_mem,proc_mode,min_proc_units," + 
                     #"desired_proc_units,max_proc_units,min_procs,desired_procs,max_procs,sharing_mode,uncap_weight,max_virtual_slots"
         attributes = info.chomp.split(",")
@@ -165,10 +263,10 @@ class Hmc < ConnectableServer
    end
    
    #Netboot an lpar
-   def lpar_net_boot(nim_ip, lpar_ip, lpar_gateway, lpar_subnetmask, lpar_name, lpar_profile, frame)
+   def lpar_net_boot(nim_ip, lpar_ip, gateway, subnetmask, lpar)
        result = execute_cmd("lpar_netboot -t ent -D -s auto -d auto -A -f -S #{nim_ip} " +
-                   "-C #{lpar_ip} -G #{lpar_gateway} -K #{lpar_subnetmask} \"#{lpar_name}\" " + 
-                   "\"#{lpar_profile}\" \"#{frame}\" ")
+                   "-C #{lpar_ip} -G #{gateway} -K #{subnetmask} \"#{lpar.name}\" " + 
+                   "\"#{lpar.current_profile}\" \"#{lpar.frame}\" ")
        result = result.each_line do |line|
         line.chomp!
         line.match(/Network boot proceeding/) do |m|
@@ -188,9 +286,13 @@ class Hmc < ConnectableServer
         end     
    end
 
-
-
-
+   # Cobalt: function to find out more information (CPU and Memory) about a frame
+   def get_frame_info  frame_id, field
+     res = {}
+     output = execute_cmd("lshwres -m #{frame_id} -r #{field} --level sys")
+     lines = output.nil? ? [] : output.split(",")
+     lines.each {|line| key,val=line.split("="); res[key]=val unless key.nil? }    
+   end
 
 
 
@@ -774,4 +876,10 @@ class Hmc < ConnectableServer
       result = execute_cmd("chhwres -r virtualio -m #{frame} -o a -p #{lpar_name} --rsubtype eth -s #{slot_number} -a \"ieee_virtual_eth=0,port_vlan_id=#{vlan_id}\"")
    end
    
+end
+
+class String
+  def numeric?
+    true if Float(self) rescue false
+  end
 end

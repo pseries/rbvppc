@@ -7,11 +7,14 @@ require "rbvppc/lpar"
 require "rbvppc/nim"
 require "rbvppc/vio"
 require "rbvppc/vscsi"
+require "rbvppc/vnic"
 require "rbvppc/network"
 
 
 module Rbvppc
-  def self.help
-  	puts "Help function not implemented yet"
-  end
+
+    #TO-DO: Implement this function
+    def self.help
+    	puts "Help function not implemented yet"
+    end
 end

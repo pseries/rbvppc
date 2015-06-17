@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.version       = Rbvppc::VERSION
   spec.authors       = ["John F. Hutchinson, Chris Wood"]
   spec.email         = ["jfhutchi@us.ibm.com, woodc@us.ibm.com"]
-  spec.summary       = %q{Remote access for IBM P-Series HMC's}
-  spec.description   = %q{This gem provides remote access to IBM P-Series Hardware Management Consoles}
+  spec.summary       = %q{Remote access for IBM P-Series}
+  spec.description   = %q{This gem provides remote access to IBM P-Series}
   spec.homepage      = ""
   spec.license       = "IBM"
 
@@ -18,8 +18,8 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_dependency('net-ssh', ">= 2.8.0")
+  spec.add_dependency('net-ssh', "~> 2.8")
 
   spec.add_development_dependency "bundler", "~> 1.5"
-  spec.add_development_dependency "rake"
+  spec.add_development_dependency "rake", "~> 0"
 end

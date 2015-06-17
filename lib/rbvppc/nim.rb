@@ -20,7 +20,7 @@ class Nim < ConnectableServer
    #Execute commands on NIM, outputting the full command
    #with puts first.
    def execute_cmd(command)
-       puts "#{command}"
+       puts "#{command}" if debug
        super "#{command}"
    end  
          
@@ -65,6 +65,21 @@ class Nim < ConnectableServer
    def master_netboot_kernel
       result = execute_cmd "lsnim -l master | awk '{if ($1 ~ /netboot_kernel/) print $3}'"
       return result.chomp
+   end
+
+   #Returns the IP address of the NIM master as a String
+   def get_master_ip
+      niminfo_line = execute_cmd("cat /etc/niminfo | grep NIM_MASTER_HOSTNAME")
+      hostname = niminfo_line.split("=")[1].chomp
+
+      ipaddr_line = execute_cmd("host #{hostname}")
+      ip = ipaddr_line.split(" is ")[1].chomp
+
+      if ip.empty?
+         raise StandardError.new("Unable to determine the NIM Master's IP Address")
+      end
+
+      return ip
    end
    
    #Reset a NIM client
@@ -159,6 +174,11 @@ class Nim < ConnectableServer
       
       bosinst_data_obj = client_lpar.name+"_bid"
       
+      #Create a NIM Client and a bosinst_data object if they don't
+      #already exist for this LPAR.
+      define_client(client_lpar) if !client_defined?(client_lpar)      
+      create_bid(client_lpar) if !bid_exists?(client_lpar)
+
       if !lpp_source.nil?
          #TODO: Do something different if an lpp_source is specified...
       end
@@ -187,14 +207,26 @@ class Nim < ConnectableServer
       network_name = get_lpar_network_name(client_lpar)
       gateway = get_network_gateway(network_name)
       subnetmask = get_network_subnetmask(network_name)
+      nim_ip = get_master_ip      
       
-      yield(gateway,subnetmask)
+      yield(nim_ip,gateway,subnetmask)
       
-      until check_install_status(client_lpar).match(/ready for a NIM operation/i) do
-         puts "Waiting for BOS install for #{client_lpar.name} to finish...."
-         sleep 30
+      #Implemented nicer looking progress message for BOS installs
+      print "Waiting for BOS install for #{client_lpar.name} to finish..."
+      print "." until bos_install_finished?(client_lpar)
+      puts "done"            
+   end
+
+   #Used in populating the BOS Install status message
+   #Returns true of the specified lpar is done with is BOS build.
+   #Sleeps for 15 seconds and returns false if otherwise.
+   def bos_install_finished?(lpar)
+      if check_install_status(lpar).match(/ready for a NIM operation/i)
+         return true
+      else
+         sleep 15
+         return false
       end
-      
    end
 
    #Returns the filesystem location of the mksysb with the specified name
@@ -292,11 +324,8 @@ class Nim < ConnectableServer
       #Define the BID object
       execute_cmd "nim -o define -t bosinst_data -a location=/darwin/#{client_lpar.name}_bid -a server=master #{client_lpar.name}_bid"
       
-      #Create bid contents file on NIM
-      #execute_cmd "mkdir -p /darwin;echo \"#{bid_contents}\" > /darwin/#{client_lpar}_bid"
-      
-      #Define the BID object
-      #execute_cmd "nim -o define -t bosinst_data -a location=/darwin/#{client_lpar}_bid -a server=master #{client_lpar}_bid"
+      #Return the name of the BID created
+      return "#{client_lpar.name}_bid"      
    end
    
    #Remove the NIM BID object for a client LPAR
