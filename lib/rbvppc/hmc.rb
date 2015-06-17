@@ -33,6 +33,26 @@ class Hmc < ConnectableServer
    def get_release
        execute_cmd("lshmc -V | grep 'Release:'|cut -d':' -f2").chomp
    end
+
+   #Inject RSA public key
+   def add_public_key(rsa_key, user, host)
+       execute_cmd("mkauthkeys -a 'ssh-rsa #{rsa_key} #{user}@#{host}'")
+   end
+
+   #Remove RSA public key
+   def remove_public_key(rsa_key, user, host)
+       execute_cmd("mkauthkeys -r 'ssh-rsa #{rsa_key} #{user}@#{host}'")
+   end
+
+   #Remove Specific user's RSA public keys
+   def remove_users_public_key_with_host(user,host)
+        execute_cmd("mkauthkeys -r #{user}@#{host}")
+   end
+
+   #Remove All of authorized SSH keys for user
+   def remove_users_public_key_with_host(user)
+        execute_cmd("mkauthkeys -r -u #{user}")
+   end
    
    #List the Frames managed by HMC
    def get_managed_systems
