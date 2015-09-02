@@ -1,3 +1,10 @@
+#
+# Authors: Christopher M Wood (<woodc@us.ibm.com>)
+#		   John F Hutchinson (<jfhutchi@us.ibm.com)
+# © Copyright IBM Corporation 2015.
+#
+# LICENSE: MIT (http://opensource.org/licenses/MIT)
+# 
 =begin
     Assumptions:
     -operations on LPARs will be done simultaneously to both their current profile and
