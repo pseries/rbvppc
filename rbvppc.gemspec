@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{Remote access for IBM P-Series}
   spec.description   = %q{This gem provides remote access to IBM P-Series}
   spec.homepage      = ""
-  spec.license       = "IBM"
+  spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
