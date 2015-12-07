@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.version       = Rbvppc::VERSION
   spec.authors       = ["John F. Hutchinson, Chris Wood"]
   spec.email         = ["jfhutchi@us.ibm.com, woodc@us.ibm.com"]
-  spec.summary       = %q{Remote access for IBM P-Series}
+  spec.summary       = %q{Remote access library for IBM P-Series}
   spec.description   = %q{This gem provides remote access to IBM P-Series}
   spec.homepage      = ""
   spec.license       = "MIT"
