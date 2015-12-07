@@ -14,21 +14,22 @@ require_relative '../lib/rbvppc/vio'
 #Modify these for your tests
 hmc_fqdn    = ""
 hmc_pass    = ""
-frame_name  = "rslppc09"
-lpar_name   = "rslpl005"
+frame_name  = ""
+lpar_name   = ""
 lpar_ip 	= ""
-vio1_name   = "rslppc09a"
-vio2_name   = "rslppc09b"
-vlan_id     = "74"
-des_prod    = "1.0"
-des_mem     = "4096"
-des_vcpu    = "1"
+vio1_name   = ""
+vio2_name   = ""
+vlan_id     = ""
+des_prod    = ""
+des_mem     = ""
+des_vcpu    = ""
 
 nim_fqdn    = ""
 nim_ip      = ""
 nim_pass    = ""
-fb_script   = "Darwin_TPM72_Key_fb_Script"
-mksysb      = "ic2-aix-7100-02-04-1341-20140807"
+fb_script   = ""
+mksysb      = ""
+
 
 #Create objects        
 hmc  = Hmc.new(hmc_fqdn,"hscroot", {:password => hmc_pass})
@@ -36,6 +37,9 @@ nim  = Nim.new(nim_fqdn,"root", {:password => nim_pass})
 vio1 = Vio.new(hmc,frame_name,vio1_name)
 vio2 = Vio.new(hmc,frame_name,vio2_name)
 lpar = Lpar.new({:hmc => hmc, :des_proc => des_prod, :des_mem => des_mem , :des_vcpu => des_vcpu, :frame => frame_name, :name => lpar_name})
+
+#Debug Flag - will display every command executed
+#hmc.toggle_debug
 
 #Open connections
 hmc.connect
