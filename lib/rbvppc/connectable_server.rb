@@ -1,3 +1,10 @@
+#
+# Authors: Christopher M Wood (<woodc@us.ibm.com>)
+#		   John F Hutchinson (<jfhutchi@us.ibm.com)
+# © Copyright IBM Corporation 2015.
+#
+# LICENSE: MIT (http://opensource.org/licenses/MIT)
+# 
 =begin  
 TODO:  
       1.Add Connectivity Methods for Non SSH connections.
@@ -11,15 +18,24 @@ require_relative 'command_failure'
 
 class ConnectableServer
 
+    attr_reader  :debug
+
     def initialize(hostname, username, options)
         options[:protocol] = :ssh if !options.has_key? :protocol
         options[:port] = 22 if (options[:protocol] == :ssh) && (!options.has_key? :port)
         @hostname, @username, @options = hostname, username, options
         @session = nil
+        @debug ||= false
     end 
 
     def connected?
         ! @session.nil?
+    end
+
+    #Debug attribute toggle for childen classes
+    #to employ for logging purposes
+    def toggle_debug
+      @debug ^= true
     end
 
     def connect
@@ -69,7 +85,11 @@ class ConnectableServer
     end
 
     def disconnect
-        @session.close
-        @session = nil
-    end   
+      @session.close
+      @session = nil
+    end
+
+    def toggle_debug
+      @debug ^= true
+    end
 end

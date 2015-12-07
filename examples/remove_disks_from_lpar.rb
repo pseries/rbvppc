@@ -1,3 +1,10 @@
+#
+# Authors: Christopher M Wood (<woodc@us.ibm.com>)
+#		   John F Hutchinson (<jfhutchi@us.ibm.com)
+# © Copyright IBM Corporation 2015.
+#
+# LICENSE: MIT (http://opensource.org/licenses/MIT)
+# 
 require_relative '../lib/rbvppc/hmc'
 require_relative '../lib/rbvppc/lpar'
 require_relative '../lib/rbvppc/vio'
@@ -6,8 +13,8 @@ frame_name = "rslppc09"
 lpar_name  = "rslpl003"
 vio1_name  = "rslppc09a"
 vio2_name  = "rslppc09b"
-hmc_fqdn    = "dwinhmc.dub.usoh.ibm.com"
-hmc_pass    = "ibm4darwin"
+hmc_fqdn    = ""
+hmc_pass    = ""
 
 #Create HMC Object
 hmc = Hmc.new(hmc_fqdn, "hscroot", {:password => hmc_pass})

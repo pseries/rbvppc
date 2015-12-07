@@ -1,3 +1,10 @@
+#
+# Authors: Christopher M Wood (<woodc@us.ibm.com>)
+#		   John F Hutchinson (<jfhutchi@us.ibm.com)
+# © Copyright IBM Corporation 2015.
+#
+# LICENSE: MIT (http://opensource.org/licenses/MIT)
+# 
 class Network
 	attr_accessor :ip_address, :is_primary, :subnet_mask, :gateway, :dns, :given_name, :vlan_id
 
