@@ -280,9 +280,23 @@ hmc.disconnect
 
 ## Contributing
 
-1. Fork it ( http://github.com/<my-github-username>/rbvppc/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+### Coding
 
+* Pick a task:
+  * Offer feedback on open [pull requests](https://github.com/jfhutchi-ibm/rbvppc/pulls).
+  * Review open [issues](https://github.com/jfhutchi-ibm/rbvppc/issues) for things to help on.
+  * [Create an issue](https://github.com/jfhutchi-ibm/rbvppc/issues/new) to start a discussion on additions or features.
+* Fork the project, add your changes and tests to cover them in a topic branch.
+* Commit your changes and rebase against `softlayer/fog` to ensure everything is up to date.
+* [Submit a pull request](https://github.com/jfhutchi-ibm/rbvppc/compare/).
+
+### Non-Coding
+
+* Offer feedback on open [issues](https://github.com/jfhutchi-ibm/rbvppc/issues).
+* Organize or volunteer at events.
+
+## Legal stuff
+Use of this software requires runtime dependencies.  Those dependencies and their respective software licenses are listed below.
+
+* [net-ssh](https://github.com/net-ssh/net-ssh/) - LICENSE: [MIT](https://github.com/net-ssh/net-ssh/blob/master/LICENSE.txt)
+* [net-scp](https://github.com/net-ssh/net-scp/) - LICENSE: [MIT](https://github.com/net-ssh/net-scp/blob/master/LICENSE.txt)
