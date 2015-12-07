@@ -283,16 +283,16 @@ hmc.disconnect
 ### Coding
 
 * Pick a task:
-  * Offer feedback on open [pull requests](https://github.com/jfhutchi-ibm/rbvppc/pulls).
-  * Review open [issues](https://github.com/jfhutchi-ibm/rbvppc/issues) for things to help on.
-  * [Create an issue](https://github.com/jfhutchi-ibm/rbvppc/issues/new) to start a discussion on additions or features.
+  * Offer feedback on open [pull requests](https://github.com/pseries/rbvppc/pulls).
+  * Review open [issues](https://github.com/pseries/rbvppc/issues) for things to help on.
+  * [Create an issue](https://github.com/pseries/rbvppc/issues/new) to start a discussion on additions or features.
 * Fork the project, add your changes and tests to cover them in a topic branch.
 * Commit your changes and rebase against `softlayer/fog` to ensure everything is up to date.
-* [Submit a pull request](https://github.com/jfhutchi-ibm/rbvppc/compare/).
+* [Submit a pull request](https://github.com/pseries/rbvppc/compare/).
 
 ### Non-Coding
 
-* Offer feedback on open [issues](https://github.com/jfhutchi-ibm/rbvppc/issues).
+* Offer feedback on open [issues](https://github.com/pseries/rbvppc/issues).
 * Organize or volunteer at events.
 
 ## Legal stuff
