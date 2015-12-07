@@ -9,10 +9,10 @@ require_relative '../lib/rbvppc/hmc'
 require_relative '../lib/rbvppc/lpar'
 require_relative '../lib/rbvppc/vio'
 
-frame_name = "rslppc09"
-lpar_name  = "rslpl003"
-vio1_name  = "rslppc09a"
-vio2_name  = "rslppc09b"
+frame_name = ""
+lpar_name  = ""
+vio1_name  = ""
+vio2_name  = ""
 hmc_fqdn    = ""
 hmc_pass    = ""
 total_size_in_gb = 30
