@@ -265,34 +265,36 @@ class Lpar
 
     # Shutdown and reactivate the LPAR so that the attribute changes take effect
     def reactivate
-        #Shut down the LPAR
+        # Shut down the LPAR
         soft_shutdown unless not_activated?
-        #Wait until it's state is "Not Activated"
+        # Wait until it's state is "Not Activated"
         sleep(10) until not_activated?
-        #Reactivate the LPAR so that the attribute changes take effect
+        # Reactivate the LPAR so that the attribute changes take effect
         activate
     end
 
-	#Bulk modifies an LPAR's resources based on the provided hash.
-	#The Hash is required to have it's keys represent labels for HMC attributes (ie, min_mem, max_mem, etc)
-	#while it's values are what the user requests those attributes be set to for this LPAR.
-	#The LPAR is then reactivated once all of the changes are made for them to take effect.
+	# Bulk modifies an LPAR's resources based on the provided hash.
+	# The Hash is required to have it's keys represent labels for HMC attributes (ie, min_mem, max_mem, etc)
+	# while it's values are what the user requests those attributes be set to for this LPAR.
+	# The LPAR is then reactivated once all of the changes are made for them to take effect.
 	# The Class Instance variable @@valid_attributes is used to determine if a key in options is a valid
 	# attribute. If an attribute in options is deemed invalid, nothing is done with respect to that attribute.
 	def modify_resources(options, reboot = true)
+        execute = false
 		options.each do |key,val|
+            execute = false
 			if @@valid_attributes.include?(key)
-				#Check for min/max/desired in the key to determine if
-				#some bound needs to be checked first
-				verify_and_handle_attr_bounds(options,key,val)
-				
-				set_multi_attr_profile(options)
-				
-				#Handle setting of any instance variables that should change
-				#due to this
+				# Check for min/max/desired in the key to determine if
+				# some bound needs to be checked first
+				verify_and_handle_attr_bounds(options,key,val)							
+				# Handle setting of any instance variables that should change
+				# due to this
 				map_key_to_attr(key, val)
-			end
+                execute = true                
+			end            
 		end	
+        # Set LPAR profile 
+        set_multi_attr_profile(options) if execute 
 		reactivate if reboot
 	end
 	
