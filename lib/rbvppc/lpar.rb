@@ -248,6 +248,13 @@ class Lpar
         cmd = "chsyscfg -m #{frame} -r prof -i \"name=#{current_profile}, lpar_name=#{name}, #{hmc_label}=#{units} \" "
         hmc.execute_cmd(cmd)
     end
+
+    # Set multiple LPAR profile attributes in a single call.
+    def set_multi_attr_profile(options)
+        profile_options = options.map{|key,val| "#{key}=#{val}"}.join(',')
+        cmd = "chsyscfg -m #{frame} -r prof -i \"name=#{current_profile}, lpar_name=#{name}, #{profile_options} \" "
+        hmc.execute_cmd(cmd)
+    end
     
     #Function to use for all Min/Max attribute changing
     def set_attr_and_reactivate(units,hmc_label)
@@ -279,7 +286,7 @@ class Lpar
 				#some bound needs to be checked first
 				verify_and_handle_attr_bounds(options,key,val)
 				
-				set_attr_profile(val,key)
+				set_multi_attr_profile(options)
 				
 				#Handle setting of any instance variables that should change
 				#due to this
