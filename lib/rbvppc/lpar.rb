@@ -5,15 +5,15 @@
 #
 # LICENSE: MIT (http://opensource.org/licenses/MIT)
 # 
-=begin
-    Assumptions:
-    -operations on LPARs will be done simultaneously to both their current profile and
-     the LPAR's hardware itself, removing the need to abstract data into both LPAR attributes
-     and attributes of that LPAR's profile.
-    Future features:
-    -May split lpar_profile into a subclass of LPAR in the future, to allow greater levels of 
-    customization.
-=end
+#
+# Assumptions:
+# Operations on LPARs will be done simultaneously to both their current profile and
+# the LPAR's hardware itself, removing the need to abstract data into both LPAR attributes
+# and attributes of that LPAR's profile.
+# Future features:
+# May split lpar_profile into a subclass of LPAR in the future, to allow greater levels of 
+# customization.
+
 require_relative 'hmc'
 require_relative 'vscsi'
 require_relative 'network'
