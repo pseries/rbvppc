@@ -25,7 +25,7 @@ class ConnectableServer
         options[:port] = 22 if (options[:protocol] == :ssh) && (!options.has_key? :port)
         @hostname, @username, @options = hostname, username, options
         @session = nil
-        @debug ||= false
+        @debug ||= true
     end 
 
     def connected?
@@ -39,11 +39,12 @@ class ConnectableServer
     end
 
     def connect
-        # @session = Net::SSH.start(@hostname, @username, :password => @password, :port => @port)
         if (@options[:key] && !@options[:password]) then
             @session = Net::SSH.start(@hostname, @username, :key => @options[:key], :port => @options[:port])
         elsif (@options[:key] && @options[:password])
             @session = Net::SSH.start(@hostname, @username, :key => @options[:key], :passphrase => @options[:password], :port => @options[:port])
+        elsif (@options[:key_data] && @options[:passphrase])
+            @session = Net::SSH.start(@hostname, @username, :keys => @options[:keys], :key_data => @options[:key_data], :keys_only => @options[:keys_only], :passphrase => @options[:passphrase], :port => @options[:port])    
         else
             @session = Net::SSH.start(@hostname, @username, :password => @options[:password], :port => @options[:port])
         end
