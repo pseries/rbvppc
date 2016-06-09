@@ -1,19 +1,19 @@
 #
 # Authors: Christopher M Wood (<woodc@us.ibm.com>)
-#		   John F Hutchinson (<jfhutchi@us.ibm.com)
+#      John F Hutchinson (<jfhutchi@us.ibm.com)
 # © Copyright IBM Corporation 2015.
 #
 # LICENSE: MIT (http://opensource.org/licenses/MIT)
 # 
-=begin
-    Assumptions:
-    -operations on LPARs will be done simultaneously to both their current profile and
-     the LPAR's hardware itself, removing the need to abstract data into both LPAR attributes
-     and attributes of that LPAR's profile.
-    Future features:
-    -May split lpar_profile into a subclass of LPAR in the future, to allow greater levels of 
-    customization.
-=end
+#
+# Assumptions:
+# Operations on LPARs will be done simultaneously to both their current profile and
+# the LPAR's hardware itself, removing the need to abstract data into both LPAR attributes
+# and attributes of that LPAR's profile.
+# Future features:
+# May split lpar_profile into a subclass of LPAR in the future, to allow greater levels of 
+# customization.
+
 require_relative 'hmc'
 require_relative 'vscsi'
 require_relative 'network'
@@ -26,26 +26,26 @@ class Lpar
                     :min_vcpu, :max_vcpu, :desired_vcpu,
                     :hostname, :uncap_weight, :max_virtual_slots
 
-    attr_reader		:hmc, :id, :name, :proc_mode, :sharing_mode, :frame,
+    attr_reader   :hmc, :id, :name, :proc_mode, :sharing_mode, :frame,
                     :current_profile, :default_profile
                     
     #Class variable to hold all 'valid' attributes that can be set on an LPAR
     @@valid_attributes = ["min_mem", "desired_mem", "max_mem", "min_num_huge_pages", "desired_num_huge_pages", "max_num_huge_pages",
-						  "mem_mode", "hpt_ratio", "proc_mode", "min_proc_units", "desired_proc_units", "max_proc_units", "min_procs",
-						  "desired_procs", "max_procs", "sharing_mode", "uncap_weight", "shared_proc_pool_id", "shared_proc_pool_name",
-						  "io_slots", "lpar_io_pool_ids", "max_virtual_slots", "hca_adapters", "boot_mode", "conn_monitoring", "auto_start",
-						  "power_ctrl_lpar_ids", "work_group_id", "redundant_err_path_reporting", "bsr_arrays", "lhea_logical_ports", "lhea_capabilities", "lpar_proc_compat_mode", "electronic_err_reporting"]
-	#Small hash to handle translating HMC labels to Lpar class attributes
+              "mem_mode", "hpt_ratio", "proc_mode", "min_proc_units", "desired_proc_units", "max_proc_units", "min_procs",
+              "desired_procs", "max_procs", "sharing_mode", "uncap_weight", "shared_proc_pool_id", "shared_proc_pool_name",
+              "io_slots", "lpar_io_pool_ids", "max_virtual_slots", "hca_adapters", "boot_mode", "conn_monitoring", "auto_start",
+              "power_ctrl_lpar_ids", "work_group_id", "redundant_err_path_reporting", "bsr_arrays", "lhea_logical_ports", "lhea_capabilities", "lpar_proc_compat_mode", "electronic_err_reporting"]
+  #Small hash to handle translating HMC labels to Lpar class attributes
     @@attr_mapping = {"min_mem"            => "min_memory",
-    				  "max_mem"            => "max_memory",
-    				  "desired_mem"        => "desired_memory",
-    				  "min_proc_units"     => "min_proc_units",
-    				  "max_proc_units"     => "max_proc_units",
-    				  "desired_proc_units" => "desired_proc_units",
-    				  "min_procs"          => "min_vcpu",
-    				  "max_procs"          => "max_vcpu",
-    				  "desired_procs"      => "desired_vcpu"
-    				 }
+              "max_mem"            => "max_memory",
+              "desired_mem"        => "desired_memory",
+              "min_proc_units"     => "min_proc_units",
+              "max_proc_units"     => "max_proc_units",
+              "desired_proc_units" => "desired_proc_units",
+              "min_procs"          => "min_vcpu",
+              "max_procs"          => "max_vcpu",
+              "desired_procs"      => "desired_vcpu"
+             }
                 
     def initialize(options_hash, disable_auto_reboot = false)
         
@@ -62,11 +62,11 @@ class Lpar
         raise StandardError.new("An Lpar cannot be defined without specifying it's FQDN") if options_hash[:hostname].nil? && options_hash[:name].nil?
         
         #Parameters that are explicitly required to make an LPAR object
-        @hmc				= options_hash[:hmc]
+        @hmc        = options_hash[:hmc]
         @desired_proc_units = options_hash[:des_proc].to_f
         @desired_memory     = options_hash[:des_mem].to_i
         @desired_vcpu       = options_hash[:des_vcpu].to_i
-        @frame				= options_hash[:frame]
+        @frame        = options_hash[:frame]
         @name               = options_hash[:name]
         
         #Parameters that can be defaulted if they are not provided
@@ -79,7 +79,7 @@ class Lpar
         !options_hash[:min_vcpu].nil? ? @min_vcpu = options_hash[:min_vcpu].to_i : @min_vcpu = @desired_vcpu
         !options_hash[:max_virt_slots].nil? ? @max_virtual_slots = options_hash[:max_virt_slots].to_i : @max_virtual_slots = 30
         !options_hash[:current_profile].nil? ? @current_profile = options_hash[:current_profile] : @current_profile = @name + "_profile"
-        !options_hash[:default_profile].nil? ? @default_profile	= options_hash[:default_profile] : @default_profile = @current_profile
+        !options_hash[:default_profile].nil? ? @default_profile = options_hash[:default_profile] : @default_profile = @current_profile
         !options_hash[:sharing_mode].nil? ? @sharing_mode = options_hash[:sharing_mode] : @sharing_mode = "cap"
         @sharing_mode == "uncap" ? @uncap_weight = options_hash[:uncap_weight].to_i : @uncap_weight = nil
         !options_hash[:proc_mode].nil? ? @proc_mode = options_hash[:proc_mode] : @proc_mode = "shared"
@@ -197,7 +197,7 @@ class Lpar
     #Since an LPAR can have states such as "Not Activated", "Open Firmware", "Shutting Down",
     #this function only helps for when we are explicitly looking for an LPAR to be either "Running" or not.
     def is_running?
-        return check_state == "Running"	
+        return check_state == "Running" 
     end
 
     #Similar to is_running? - only returns true if the LPAR's state is "Not Activated".
@@ -248,6 +248,13 @@ class Lpar
         cmd = "chsyscfg -m #{frame} -r prof -i \"name=#{current_profile}, lpar_name=#{name}, #{hmc_label}=#{units} \" "
         hmc.execute_cmd(cmd)
     end
+
+    # Set multiple LPAR profile attributes in a single call.
+    def set_multi_attr_profile(options)
+        profile_options = options.map{|key,val| "#{key}=#{val}"}.join(',')
+        cmd = "chsyscfg -m #{frame} -r prof -i \"name=#{current_profile}, lpar_name=#{name}, #{profile_options} \" "
+        hmc.execute_cmd(cmd)
+    end
     
     #Function to use for all Min/Max attribute changing
     def set_attr_and_reactivate(units,hmc_label)
@@ -258,37 +265,39 @@ class Lpar
 
     # Shutdown and reactivate the LPAR so that the attribute changes take effect
     def reactivate
-        #Shut down the LPAR
+        # Shut down the LPAR
         soft_shutdown unless not_activated?
-        #Wait until it's state is "Not Activated"
+        # Wait until it's state is "Not Activated"
         sleep(10) until not_activated?
-        #Reactivate the LPAR so that the attribute changes take effect
+        # Reactivate the LPAR so that the attribute changes take effect
         activate
     end
 
-	#Bulk modifies an LPAR's resources based on the provided hash.
-	#The Hash is required to have it's keys represent labels for HMC attributes (ie, min_mem, max_mem, etc)
-	#while it's values are what the user requests those attributes be set to for this LPAR.
-	#The LPAR is then reactivated once all of the changes are made for them to take effect.
-	# The Class Instance variable @@valid_attributes is used to determine if a key in options is a valid
-	# attribute. If an attribute in options is deemed invalid, nothing is done with respect to that attribute.
-	def modify_resources(options, reboot = true)
-		options.each do |key,val|
-			if @@valid_attributes.include?(key)
-				#Check for min/max/desired in the key to determine if
-				#some bound needs to be checked first
-				verify_and_handle_attr_bounds(options,key,val)
-				
-				set_attr_profile(val,key)
-				
-				#Handle setting of any instance variables that should change
-				#due to this
-				map_key_to_attr(key, val)
-			end
-		end	
-		reactivate if reboot
-	end
-	
+  # Bulk modifies an LPAR's resources based on the provided hash.
+  # The Hash is required to have it's keys represent labels for HMC attributes (ie, min_mem, max_mem, etc)
+  # while it's values are what the user requests those attributes be set to for this LPAR.
+  # The LPAR is then reactivated once all of the changes are made for them to take effect.
+  # The Class Instance variable @@valid_attributes is used to determine if a key in options is a valid
+  # attribute. If an attribute in options is deemed invalid, nothing is done with respect to that attribute.
+  def modify_resources(options, reboot = true, prevalidated = false)
+    execute = false
+    options.each do |key,val|
+      execute = false
+      if @@valid_attributes.include?(key)
+        # Check for min/max/desired in the key to determine if
+        # some bound needs to be checked first
+        verify_and_handle_attr_bounds(options,key,val) unless prevalidated
+        # Handle setting of any instance variables that should change
+        # due to this
+        map_key_to_attr(key, val)
+        execute = true
+      end
+    end
+    # Set LPAR profile
+    set_multi_attr_profile(options) if execute
+    reactivate if reboot
+  end
+  
     #####################################
     # Processing Unit functions
     #####################################
@@ -342,7 +351,7 @@ class Lpar
         set_attr_and_reactivate(units,"min_proc_units")
         
         #Set the private member
-        @min_proc_units = units	
+        @min_proc_units = units 
     end
     
     #####################################
@@ -942,13 +951,13 @@ class Lpar
     #Used by modify_resources() to handle setting attribute values
     #on the Lpar object after modifying the value on the HMC.
     def map_key_to_attr(key, value)
-    	if @@attr_mapping.has_key?(key)
-    		attr_name = @@attr_mapping[key]    		
-    		#Use Object function instance_variable_set to take
-    		#a string that is the name of an instance variable
-    		#and change it's value
-    		instance_variable_set("@" + attr_name, value)
-    	end
+      if @@attr_mapping.has_key?(key)
+        attr_name = @@attr_mapping[key]       
+        #Use Object function instance_variable_set to take
+        #a string that is the name of an instance variable
+        #and change it's value
+        instance_variable_set("@" + attr_name, value)
+      end
     end
     
     #Private function that is used to ensure that the LPAR attribute key
@@ -958,98 +967,99 @@ class Lpar
     #also be changed. If none of the bounds related to the attribute key are cited in the hash,
     #the assumption that the attribute bounds should be changed to accomodate this is made.
     def verify_and_handle_attr_bounds(options_hash, key, value)
-    	split_key = key.split('_')
-    	#Save the qualifier for the attribute
-    	#as well it's the base name
-    	qualifier = split_key[0]    	
-    	split_key.delete_at(0)
-    	base_attr = split_key.join('_')
-    	fix_bounds = false
-    	if ["min","max","desired"].include?(qualifier)
-    		other_bounds = ["min","max","desired"].select { |x| x!=qualifier }    		
-			#Since there will only ever be 2 more array elements in other_bounds at this point,
-			#assign them, find their labels, find their attribute names,
-			#find their current values, and continue with validation
-			other_bound_a = other_bounds[0]
-			other_bound_b = other_bounds[1]
-			bound_a_label = [other_bound_a,base_attr].join('_')
-			bound_b_label = [other_bound_b,base_attr].join('_')
-			bound_a_instance_var = @@attr_mapping[bound_a_label]
-			bound_b_instance_var = @@attr_mapping[bound_b_label]
-			bound_a = instance_variable_get("@" + bound_a_instance_var)
-			bound_b = instance_variable_get("@" + bound_b_instance_var)
-			#Find out if this attribute change doesn't satisfy the current bounds
-			this_attr_label = key
-			this_attr_value = value
-			
-			bound_a_new_val = nil
-			bound_b_new_val = nil
-			
-			#If this value does not satisfy the current bounds, take note and
-			#rectify it later
-			if !satisfies_bounds?(qualifier, this_attr_value, bound_a, bound_b)				
-				#Make the new bounds values be what is in the options hash, unless
-				#it isn't specified, then just make it the same as what we're trying to change.
-				if options_hash.has_key?(bound_a_label)
-					bound_a_new_val = options_hash[bound_a_label]
-				else
-					bound_a_new_val = value
-				end
-				
-				if options_hash.has_key?(bound_b_label)
-					bound_b_new_val = options_hash[bound_b_label]
-				else
-					bound_b_new_val = value
-				end
-				
-				#Check if the bounds might be satisfied if *only one* of the bounds changed
-				if satisfies_bounds?(qualifier, this_attr_value, bound_a_new_val, bound_b)
-					bound_b_new_val = bound_b
-				elsif satisfies_bounds?(qualifier, this_attr_value, bound_a, bound_b_new_val)
-					bound_a_new_val = bound_a
-				end				
-			end
-			
-			#If this is a vCPU or a Proc Units change, we need to ensure that
-			#the new change adheres to the fact that the ratio between vCPUs and
-			#Proc Units needs to be 10:1
-    		if ["procs","proc_units"].include?(base_attr)
-    			#TODO: Add logic that handles ensuring this 10:1 ratio remains in
-    			#place after this change.
-    		end
-    		
-    		if !bound_a_new_val.nil? and !bound_b_new_val.nil?
-    			#Based on how the other_bounds array is constructed earlier,
-    			#other_bound_a can either be "min" or "max", which helps determine the order
-    			#in which to set bound_a and bound_b. Also, if the new bound is less than or greater than
-    			#the old bound will further determine this order.    		
-    			
-    			#If other_bound_a == 'min', and it's new value is less than the old one,
-    			#Change this one first, and then the second bound
-    			#Same for if bound_a is 'max' and it's new value is greater than the old
-    			if (other_bound_a == "min" and bound_a_new_val <= bound_a) or
-    			   (other_bound_a == "max" and bound_a_new_val > bound_a)
-    				set_attr_profile(bound_a_new_val, bound_a_label)
-    				set_attr_profile(bound_b_new_val, bound_b_label)
-    			elsif (other_bound_a == "min" and bound_a_new_val > bound_a) or
-    			      (other_bound_a == "max" and bound_a_new_val <= bound_a)
-    				set_attr_profile(bound_b_new_val, bound_b_label)
-    				set_attr_profile(bound_a_new_val, bound_a_label)
-    			end
-    			instance_variable_set("@" + bound_a_instance_var, bound_a_new_val)
-    			instance_variable_set("@" + bound_b_instance_var, bound_b_new_val)
-    		end
-    	end
+      split_key = key.split('_')
+      #Save the qualifier for the attribute
+      #as well it's the base name
+      qualifier = split_key[0]      
+      split_key.delete_at(0)
+      base_attr = split_key.join('_')
+      fix_bounds = false
+      if ["min","max","desired"].include?(qualifier)
+        other_bounds = ["min","max","desired"].select { |x| x!=qualifier }        
+
+        #Since there will only ever be 2 more array elements in other_bounds at this point,
+        #assign them, find their labels, find their attribute names,
+        #find their current values, and continue with validation
+        other_bound_a = other_bounds[0]
+        other_bound_b = other_bounds[1]
+        bound_a_label = [other_bound_a,base_attr].join('_')
+        bound_b_label = [other_bound_b,base_attr].join('_')
+        bound_a_instance_var = @@attr_mapping[bound_a_label]
+        bound_b_instance_var = @@attr_mapping[bound_b_label]
+        bound_a = instance_variable_get("@" + bound_a_instance_var)
+        bound_b = instance_variable_get("@" + bound_b_instance_var)
+        #Find out if this attribute change doesn't satisfy the current bounds
+        this_attr_label = key
+        this_attr_value = value
+        
+        bound_a_new_val = nil
+        bound_b_new_val = nil
+        
+        #If this value does not satisfy the current bounds, take note and
+        #rectify it later
+        if !satisfies_bounds?(qualifier, this_attr_value, bound_a, bound_b)       
+          #Make the new bounds values be what is in the options hash, unless
+          #it isn't specified, then just make it the same as what we're trying to change.
+          if options_hash.has_key?(bound_a_label)
+            bound_a_new_val = options_hash[bound_a_label]
+          else
+            bound_a_new_val = value
+          end
+          
+          if options_hash.has_key?(bound_b_label)
+            bound_b_new_val = options_hash[bound_b_label]
+          else
+            bound_b_new_val = value
+          end
+          
+          #Check if the bounds might be satisfied if *only one* of the bounds changed
+          if satisfies_bounds?(qualifier, this_attr_value, bound_a_new_val, bound_b)
+            bound_b_new_val = bound_b
+          elsif satisfies_bounds?(qualifier, this_attr_value, bound_a, bound_b_new_val)
+            bound_a_new_val = bound_a
+          end       
+        end
+        
+        #If this is a vCPU or a Proc Units change, we need to ensure that
+        #the new change adheres to the fact that the ratio between vCPUs and
+        #Proc Units needs to be 10:1
+        if ["procs","proc_units"].include?(base_attr)
+          #TODO: Add logic that handles ensuring this 10:1 ratio remains in
+          #place after this change.
+        end
+        
+        if !bound_a_new_val.nil? and !bound_b_new_val.nil?
+          #Based on how the other_bounds array is constructed earlier,
+          #other_bound_a can either be "min" or "max", which helps determine the order
+          #in which to set bound_a and bound_b. Also, if the new bound is less than or greater than
+          #the old bound will further determine this order.       
+          
+          #If other_bound_a == 'min', and it's new value is less than the old one,
+          #Change this one first, and then the second bound
+          #Same for if bound_a is 'max' and it's new value is greater than the old
+          if (other_bound_a == "min" and bound_a_new_val <= bound_a) or
+             (other_bound_a == "max" and bound_a_new_val > bound_a)
+            set_attr_profile(bound_a_new_val, bound_a_label)
+            set_attr_profile(bound_b_new_val, bound_b_label)
+          elsif (other_bound_a == "min" and bound_a_new_val > bound_a) or
+                (other_bound_a == "max" and bound_a_new_val <= bound_a)
+            set_attr_profile(bound_b_new_val, bound_b_label)
+            set_attr_profile(bound_a_new_val, bound_a_label)
+          end
+          instance_variable_set("@" + bound_a_instance_var, bound_a_new_val)
+          instance_variable_set("@" + bound_b_instance_var, bound_b_new_val)
+        end
+      end
     end
     
     def satisfies_bounds?(op, val1, val2, val3)
-    	if op == "min"
-    		return (val1 <= val2 and val1 <= val3 and val2 >= val3)
-    	elsif op == "max"
-    		return (val1 >= val2 and val1 >= val3 and val2 <= val3)
-    	elsif op == "desired"
-    		return (val1 >= val2 and val1 <= val3 and val2 <= val3)
-    	end
+      if op == "min"
+        return (val1 <= val2 and val1 <= val3 and val2 >= val3)
+      elsif op == "max"
+        return (val1 >= val2 and val1 >= val3 and val2 <= val3)
+      elsif op == "desired"
+        return (val1 >= val2 and val1 <= val3 and val2 <= val3)
+      end
     end
     
     #Set the processing units for an LPAR via DLPAR

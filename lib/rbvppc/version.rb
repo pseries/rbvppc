@@ -6,5 +6,5 @@
 # LICENSE: MIT (http://opensource.org/licenses/MIT)
 # 
 module Rbvppc
-  VERSION = "1.0.1"
+  VERSION = "1.0.2"
 end
