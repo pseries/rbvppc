@@ -25,7 +25,7 @@ class ConnectableServer
         options[:port] = 22 if (options[:protocol] == :ssh) && (!options.has_key? :port)
         @hostname, @username, @options = hostname, username, options
         @session = nil
-        @debug ||= false
+        @debug ||= true
     end 
 
     def connected?
