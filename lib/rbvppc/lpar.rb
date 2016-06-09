@@ -976,6 +976,7 @@ class Lpar
       fix_bounds = false
       if ["min","max","desired"].include?(qualifier)
         other_bounds = ["min","max","desired"].select { |x| x!=qualifier }        
+<<<<<<< HEAD
       #Since there will only ever be 2 more array elements in other_bounds at this point,
       #assign them, find their labels, find their attribute names,
       #find their current values, and continue with validation
@@ -1022,6 +1023,54 @@ class Lpar
       #If this is a vCPU or a Proc Units change, we need to ensure that
       #the new change adheres to the fact that the ratio between vCPUs and
       #Proc Units needs to be 10:1
+=======
+        #Since there will only ever be 2 more array elements in other_bounds at this point,
+        #assign them, find their labels, find their attribute names,
+        #find their current values, and continue with validation
+        other_bound_a = other_bounds[0]
+        other_bound_b = other_bounds[1]
+        bound_a_label = [other_bound_a,base_attr].join('_')
+        bound_b_label = [other_bound_b,base_attr].join('_')
+        bound_a_instance_var = @@attr_mapping[bound_a_label]
+        bound_b_instance_var = @@attr_mapping[bound_b_label]
+        bound_a = instance_variable_get("@" + bound_a_instance_var)
+        bound_b = instance_variable_get("@" + bound_b_instance_var)
+        #Find out if this attribute change doesn't satisfy the current bounds
+        this_attr_label = key
+        this_attr_value = value
+        
+        bound_a_new_val = nil
+        bound_b_new_val = nil
+        
+        #If this value does not satisfy the current bounds, take note and
+        #rectify it later
+        if !satisfies_bounds?(qualifier, this_attr_value, bound_a, bound_b)       
+          #Make the new bounds values be what is in the options hash, unless
+          #it isn't specified, then just make it the same as what we're trying to change.
+          if options_hash.has_key?(bound_a_label)
+            bound_a_new_val = options_hash[bound_a_label]
+          else
+            bound_a_new_val = value
+          end
+          
+          if options_hash.has_key?(bound_b_label)
+            bound_b_new_val = options_hash[bound_b_label]
+          else
+            bound_b_new_val = value
+          end
+          
+          #Check if the bounds might be satisfied if *only one* of the bounds changed
+          if satisfies_bounds?(qualifier, this_attr_value, bound_a_new_val, bound_b)
+            bound_b_new_val = bound_b
+          elsif satisfies_bounds?(qualifier, this_attr_value, bound_a, bound_b_new_val)
+            bound_a_new_val = bound_a
+          end       
+        end
+        
+        #If this is a vCPU or a Proc Units change, we need to ensure that
+        #the new change adheres to the fact that the ratio between vCPUs and
+        #Proc Units needs to be 10:1
+>>>>>>> f40be73ca711e9a7a18920c8ad2446fa55cf9025
         if ["procs","proc_units"].include?(base_attr)
           #TODO: Add logic that handles ensuring this 10:1 ratio remains in
           #place after this change.
