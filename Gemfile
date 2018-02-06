@@ -1,4 +1,7 @@
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in remote_hmc.gemspec
+group :development, :test do
+	gem 'rubocop', '~> 0.52.0', require: false
+end
+
 gemspec

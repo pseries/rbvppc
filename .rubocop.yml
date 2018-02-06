@@ -1,0 +1,18 @@
+# Rubocop exceptions
+Style/AsciiComments:
+  Enabled: false
+
+Metrics/CyclomaticComplexity:
+  Max: 24
+
+Metrics/PerceivedComplexity:
+  Max: 24
+
+Metrics/MethodLength:
+  Max: 64
+
+Metrics/ParameterLists:
+  Max: 6
+
+Metrics/AbcSize:
+  Max: 114

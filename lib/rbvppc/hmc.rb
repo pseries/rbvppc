@@ -1,57 +1,53 @@
 #
 # Authors: Christopher M Wood (<woodc@us.ibm.com>)
-#		   John F Hutchinson (<jfhutchi@us.ibm.com)
+#      John F Hutchinson (<jfhutchi@us.ibm.com)
 # © Copyright IBM Corporation 2015.
 #
 # LICENSE: MIT (http://opensource.org/licenses/MIT)
 # 
-=begin  
-TODO:  
-      1.go through each method and parse output
-      
-=end   
+   
 require_relative 'connectable_server'
 
 class Hmc < ConnectableServer
      
    
-   #Execute commands on HMC setting language to US English
-   def execute_cmd(command)
-       puts "export LANG=en_US.UTF-8;#{command}" if debug
-       super "export LANG=en_US.UTF-8;#{command}"
-   end
-   
-   #Execute VIOS commands via HMC
-   def  execute_vios_cmd(frame, vio, command)
-       execute_cmd "viosvrcmd -m #{frame} -p #{vio} -c \" #{command} \""
-   end
-   
-   #Execute VIOS commands via HMC grepping for a specific item.
-   def  execute_vios_cmd_grep(frame, vio, command, grep_for)
-       execute_cmd "viosvrcmd -m #{frame} -p #{vio} -c \" #{command} \" | grep #{grep_for}"
-   end
-   
-   #Get the HMC version
-   def get_version
-       execute_cmd("lshmc -V | grep 'Version:'|cut -d':' -f2").chomp
-   end  
-   
-   #Get the HMC Release
-   def get_release
-       execute_cmd("lshmc -V | grep 'Release:'|cut -d':' -f2").chomp
-   end
-   
-   #List the Frames managed by HMC
-   def list_frames
-       out_array = []
-       result = execute_cmd "lssyscfg -r sys -F name"
-       result.each_line do |x|
-         x.chomp!
-         out_array.push(x)
-       end      
-       #Return the output array
-       return out_array	
-   end
+  #Execute commands on HMC setting language to US English
+  def execute_cmd(command)
+    puts "export LANG=en_US.UTF-8;#{command}" if debug
+    super "export LANG=en_US.UTF-8;#{command}"
+  end
+
+  #Execute VIOS commands via HMC
+  def  execute_vios_cmd(frame, vio, command)
+    execute_cmd "viosvrcmd -m #{frame} -p #{vio} -c \" #{command} \""
+  end
+
+  #Execute VIOS commands via HMC grepping for a specific item.
+  def  execute_vios_cmd_grep(frame, vio, command, grep_for)
+    execute_cmd "viosvrcmd -m #{frame} -p #{vio} -c \" #{command} \" | grep #{grep_for}"
+  end
+
+  #Get the HMC version
+  def get_version
+    execute_cmd("lshmc -V | grep 'Version:'|cut -d':' -f2").chomp
+  end  
+
+  #Get the HMC Release
+  def get_release
+    execute_cmd("lshmc -V | grep 'Release:'|cut -d':' -f2").chomp
+  end
+
+  #List the Frames managed by HMC
+  def list_frames
+    out_array = []
+    result = execute_cmd "lssyscfg -r sys -F name"
+    result.each_line do |x|
+      x.chomp!
+      out_array.push(x)
+    end      
+    #Return the output array
+    return out_array 
+  end
 
   #List LPARs on a frame
   def list_lpars_on_frame(frame)
@@ -84,51 +80,49 @@ class Hmc < ConnectableServer
   
   #List VIOS on a frame
   def list_vios_on_frame(frame)
-  	vios = []
-  	result = exectue_cmd "lssyscfg -r lpar -m #{frame} -F name,lpar_env | grep vioserver"
-  	result.each_line do |line|
-  		line = line.chomp!
-  		line_arr = line.split(',')
-  		line_arr.each do |field|
-  			if field == "vioserver"
-  				#We don't want to see "vioserver" in the array only the actual vios names
-  		    else
-				vios.push(field)
-			end
-		end
-  	end
-  			
-	return vios
+    vios = []
+    result = exectue_cmd "lssyscfg -r lpar -m #{frame} -F name,lpar_env | grep vioserver"
+    result.each_line do |line|
+      line = line.chomp!
+      line_arr = line.split(',')
+      line_arr.each do |field|
+        if field == "vioserver"
+          #We don't want to see "vioserver" in the array only the actual vios names
+        else
+          vios.push(field)
+        end
+      end
+    end        
+  return vios
   end
 
   #Get Frame info- type,model,serial number
   def get_frame_specs(frame)
-   	info = execute_cmd("lssyscfg -r sys -m #{frame}")
-	attributes = info.chomp.split(",")
-	frame_hash = {}
-	attributes.each do |line|
-		att,val = line.split("=")
-		case att
-		when "name"
-			frame_hash[:name]=val
-		when "type_model"
-			frame_hash[:type_model]=val
-		when "serial_num"
-			frame_hash[:serial_num]=val
-		end
-	end
-		
-	return frame_hash
+    info = execute_cmd("lssyscfg -r sys -m #{frame}")
+    attributes = info.chomp.split(",")
+    frame_hash = {}
+    attributes.each do |line|
+      att,val = line.split("=")
+      case att
+      when "name"
+        frame_hash[:name]=val
+      when "type_model"
+        frame_hash[:type_model]=val
+      when "serial_num"
+        frame_hash[:serial_num]=val
+      end
+    end
+    return frame_hash
   end
-	
+  
   #Get Frame info - CPU/vCPU data
   def get_frame_cpu(frame)
     info = execute_cmd("lshwres -r proc -m #{frame} --level sys")
     attributes = info.chomp.split(",")
     frame_hash = {}
     attributes.each do |line|
-    	att,val = line.split("=")
-    	frame_hash[att.to_sym]=val
+      att,val = line.split("=")
+      frame_hash[att.to_sym]=val
     end
     
     return frame_hash
@@ -141,34 +135,34 @@ class Hmc < ConnectableServer
     quoted_substrings = info.chomp.match(/"[^"]+"/)
     info.gsub!(/"[^"]+"/, "")
         
-   	#Handle strings that are not quoted
+    #Handle strings that are not quoted
     attributes = info.chomp.split(",")
     frame_hash = {}
     attributes.each do |line|
-   	  att,val = line.split("=")
+      att,val = line.split("=")
       frame_hash[att.to_sym]=val
     end
- 	
-   	#Find used memory by subtracting available from total
+  
+    #Find used memory by subtracting available from total
     used_mem = frame_hash[:configurable_sys_mem].to_i - frame_hash[:curr_avail_sys_mem].to_i
     frame_hash[:used_mem]=used_mem.to_s
-	
-   	#Handle strings that are quoted checking for more than one
+  
+    #Handle strings that are quoted checking for more than one
     quoted_substrings = quoted_substrings.to_s
     #match on "," 
-   	unless quoted_substrings.match(/\"(.*)\",\"(.*)\"/)
+    unless quoted_substrings.match(/\"(.*)\",\"(.*)\"/)
       substring = quoted_substrings.to_s.chomp.split("=")
       substring.each do |line|
-	      line.gsub!("\"","")
+        line.gsub!("\"","")
       end
       temp_str = substring[1]
       ratios = temp_str.split(',')
       frame_hash[:"#{substring[0]}"]=ratios
-	else
+    else
       quoted = quoted_substrings.chomp.split('","')
       quoted.each do |line|
         line.gsub!("\"","")
-	    att,val = line.split('=')
+      att,val = line.split('=')
         ratios = val.split(',')
         frame_hash[att.to_sym]=ratios
       end
@@ -176,130 +170,130 @@ class Hmc < ConnectableServer
                
     return frame_hash
   end
-	
+  
    #Get the Current Profile of an LPAR
-   def get_lpar_curr_profile(frame, lpar, filter = "lpar_name")
-     curr_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter #{filter}s=#{lpar} -F curr_profile"
+  def get_lpar_curr_profile(frame, lpar, filter = "lpar_name")
+    curr_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter #{filter}s=#{lpar} -F curr_profile"
     return curr_prof.chomp
-    end
+  end
    
    #Get the Default Profile of an LPAR
-   def get_lpar_def_profile(frame, lpar, filter = "lpar_name")
-     def_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter #{filter}s=#{lpar} -F default_profile"
+  def get_lpar_def_profile(frame, lpar, filter = "lpar_name")
+    def_prof = execute_cmd "lssyscfg -r lpar -m #{frame} --filter #{filter}s=#{lpar} -F default_profile"
     return def_prof.chomp
-   end
+  end
    
-    #Get the general attributes of an lpar by specifying 
-    #the frame and lpar names as Strings. Returns an options 
-    #hash representing that LPAR
-    def get_lpar_options(frame, lpar, filter = "lpar_name")
-      profile_name = get_lpar_curr_profile(frame, lpar, filter)
-      info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\',lpar_names=\'#{lpar}\' "
-                    #"-F name,lpar_name,lpar_id,min_mem,desired_mem,max_mem,proc_mode,min_proc_units," + 
-                    #"desired_proc_units,max_proc_units,min_procs,desired_procs,max_procs,sharing_mode,uncap_weight,max_virtual_slots"
-        attributes = info.chomp.split(",")
-        lpar_hash = {}
-        attributes.each do |line|
-            att,val = line.split("=")
-            case att
-            when "name"
-                lpar_hash[:current_profile]=val
-            when "lpar_name"
-                lpar_hash[:name]=val
-            when "lpar_id"
-                lpar_hash[:id]=val
-            when "min_mem"
-                lpar_hash[:min_mem]=val
-            when "desired_mem"
-                lpar_hash[:des_mem]=val
-            when "max_mem"
-                lpar_hash[:max_mem]=val
-            when "proc_mode"
-                lpar_hash[:proc_mode]=val
-            when "min_proc_units"
-                lpar_hash[:min_proc]=val
-            when "desired_proc_units"
-                lpar_hash[:des_proc]=val
-            when "max_proc_units"
-                lpar_hash[:max_proc]=val
-            when "min_procs"
-                lpar_hash[:min_vcpu]=val
-            when "desired_procs"
-                lpar_hash[:des_vcpu]=val
-            when "max_procs"
-                lpar_hash[:max_vcpu]=val
-            when "sharing_mode"
-                lpar_hash[:sharing_mode]=val
-            when "uncap_weight"
-                lpar_hash[:uncap_weight]=val
-            when "max_virtual_slots"
-                lpar_hash[:max_virt_slots]=val
-            end
-        end
-        lpar_hash[:hmc]=self
-        lpar_hash[:frame]=frame
-        
-        return lpar_hash
+  #Get the general attributes of an lpar by specifying 
+  #the frame and lpar names as Strings. Returns an options 
+  #hash representing that LPAR
+  def get_lpar_options(frame, lpar, filter = "lpar_name")
+    profile_name = get_lpar_curr_profile(frame, lpar, filter)
+    info = execute_cmd "lssyscfg -r prof -m \'#{frame}\' --filter profile_names=\'#{profile_name}\',lpar_names=\'#{lpar}\' "
+                  #"-F name,lpar_name,lpar_id,min_mem,desired_mem,max_mem,proc_mode,min_proc_units," + 
+                  #"desired_proc_units,max_proc_units,min_procs,desired_procs,max_procs,sharing_mode,uncap_weight,max_virtual_slots"
+    attributes = info.chomp.split(",")
+    lpar_hash = {}
+    attributes.each do |line|
+      att,val = line.split("=")
+      case att
+      when "name"
+        lpar_hash[:current_profile]=val
+      when "lpar_name"
+        lpar_hash[:name]=val
+      when "lpar_id"
+        lpar_hash[:id]=val
+      when "min_mem"
+        lpar_hash[:min_mem]=val
+      when "desired_mem"
+        lpar_hash[:des_mem]=val
+      when "max_mem"
+        lpar_hash[:max_mem]=val
+      when "proc_mode"
+        lpar_hash[:proc_mode]=val
+      when "min_proc_units"
+        lpar_hash[:min_proc]=val
+      when "desired_proc_units"
+        lpar_hash[:des_proc]=val
+      when "max_proc_units"
+        lpar_hash[:max_proc]=val
+      when "min_procs"
+        lpar_hash[:min_vcpu]=val
+      when "desired_procs"
+        lpar_hash[:des_vcpu]=val
+      when "max_procs"
+        lpar_hash[:max_vcpu]=val
+      when "sharing_mode"
+        lpar_hash[:sharing_mode]=val
+      when "uncap_weight"
+        lpar_hash[:uncap_weight]=val
+      when "max_virtual_slots"
+        lpar_hash[:max_virt_slots]=val
+      end
     end
+    lpar_hash[:hmc]=self
+    lpar_hash[:frame]=frame
+      
+    return lpar_hash
+  end
    
    #Reboot the HMC
-   def reboot_hmc
-       execute_cmd "hmcshutdown -t now -r"
-   end
+  def reboot_hmc
+    execute_cmd "hmcshutdown -t now -r"
+  end
    
-   #Show status of lpars on frame (Power 5/6/7)
-   #Sample output
-   #dwin004:Running
-   #rslpl004:Running
-   def list_status_of_lpars(frame = nil)
-       if frame.nil?
-           #return lpars on all frames?
-       else
-        execute_cmd "lssyscfg -m #{frame} -r lpar -F name:state"
-       end
-   end
+  #Show status of lpars on frame (Power 5/6/7)
+  #Sample output
+  #dwin004:Running
+  #rslpl004:Running
+  def list_status_of_lpars(frame = nil)
+    if frame.nil?
+      #return lpars on all frames?
+    else
+      execute_cmd "lssyscfg -m #{frame} -r lpar -F name:state"
+    end
+  end
    
-   #Overview DLPAR Status
-   def view_dlpar_status
-       execute_cmd "lspartition -dlpar"
-   end
+  #Overview DLPAR Status
+  def view_dlpar_status
+    execute_cmd "lspartition -dlpar"
+  end
    
-   #Show available filesystem space on the hmc
-   def view_hmc_filesystem_space
-       execute_cmd "monhmc -r disk -n 0"
-   end
+  #Show available filesystem space on the hmc
+  def view_hmc_filesystem_space
+    execute_cmd "monhmc -r disk -n 0"
+  end
    
-   #Netboot an lpar
+   # Netboot an lpar
    def lpar_net_boot(nim_ip, lpar_ip, gateway, subnetmask, lpar)
-       result = execute_cmd("lpar_netboot -t ent -D -s auto -d auto -A -f -S #{nim_ip} " +
-                   "-C #{lpar_ip} -G #{gateway} -K #{subnetmask} \"#{lpar.name}\" " + 
-                   "\"#{lpar.current_profile}\" \"#{lpar.frame}\" ")
-       result = result.each_line do |line|
-        line.chomp!
-        line.match(/Network boot proceeding/) do |m|
-         return true
-        end
-       end
-       return false
+    result = execute_cmd("lpar_netboot -t ent -D -s auto -d auto -A -f -S #{nim_ip} " +
+                 "-C #{lpar_ip} -G #{gateway} -K #{subnetmask} \"#{lpar.name}\" " + 
+                 "\"#{lpar.current_profile}\" \"#{lpar.frame}\" ")
+    result = result.each_line do |line|
+      line.chomp!
+      line.match(/Network boot proceeding/) do |m|
+        return true
+      end
+    end
+    return false
    end
    
-   #Validate connection to hmc is established
-   def is_connected?
-        version = get_version
-        if version.nil?
-          return false
-        else
-          return true
-        end     
-   end
+  # Validate connection to hmc is established
+  def is_connected?
+    version = get_version
+    if version.nil?
+      return false
+    else
+      return true
+    end     
+  end
 
-   # Cobalt: function to find out more information (CPU and Memory) about a frame
-   def get_frame_info  frame_id, field
-     res = {}
-     output = execute_cmd("lshwres -m #{frame_id} -r #{field} --level sys")
-     lines = output.nil? ? [] : output.split(",")
-     lines.each {|line| key,val=line.split("="); res[key]=val unless key.nil? }    
-   end
+  # Cobalt: function to find out more information (CPU and Memory) about a frame
+  def get_frame_info  frame_id, field
+    res = {}
+    output = execute_cmd("lshwres -m #{frame_id} -r #{field} --level sys")
+    lines = output.nil? ? [] : output.split(",")
+    lines.each {|line| key,val=line.split("="); res[key]=val unless key.nil? }    
+  end
 
 
 
@@ -379,24 +373,6 @@ class Hmc < ConnectableServer
      
      return parse_slash_delim_string(vnic_string,
              [:virtual_slot_num, :is_ieee, :port_vlan_id, :additional_vlan_ids, :is_trunk, :is_required]) if !vnic_string.empty?
-     
-=begin
-     vnic_attributes = vnic_string.split(/\//)
-     slot_num = vnic_attributes[0]
-     is_ieee = vnic_attributes[1]
-     port_vlan_id = vnic_attributes[2]
-     additional_vlan_ids = vnic_attributes[3]
-     is_trunk = vnic_attributes[4]
-     is_required = vnic_attributes[5]
-     
-     return { :virtual_slot_num => slot_num,
-              :is_ieee => is_ieee,
-              :port_vlan_id => port_vlan_id,
-              :additional_vlan_ids => additional_vlan_ids,
-              :is_trunk => is_trunk,
-              :is_required => is_required
-            }
-=end
    end
    
    def defeat_rich_shomo(string)
@@ -410,24 +386,6 @@ class Hmc < ConnectableServer
      
      return parse_slash_delim_string(vscsi_string, 
              [:virtual_slot_num, :client_or_server, :remote_lpar_id, :remote_lpar_name, :remote_slot_num, :is_required]) if !vscsi_string.empty?
-     
-=begin
-     vscsi_attributes = vscsi_string.split(/\//)
-     virtual_slot_num = vscsi_attributes[0]
-     client_or_server = vscsi_attributes[1]
-     remote_lpar_id = vscsi_attributes[2]
-     remote_lpar_name = vscsi_attributes[3]
-     remote_slot_num = vscsi_attributes[4]
-     is_required = vscsi_attributes[5]
-     
-     return { :virtual_slot_num => virtual_slot_num,
-              :client_or_server => client_or_server,
-              :remote_lpar_id => remote_lpar_id,
-              :remote_lpar_name => remote_lpar_name,
-              :remote_slot_num => remote_slot_num,
-              :is_required => is_required
-            }
-=end
    end
    
    def parse_vserial_syntax(vserial_string)
